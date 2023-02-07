@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>COHA in the City Survey</title>
+    <link rel="stylesheet" type="text/css" href="/static/coha.css" />
+    <script src="/static/coha.js"></script>
+</head>
+<body>
+
+<div id="top">
+<form id="cohaForm"
+      name="cohaForm"
+      onchange="formChanged()"
+      method="POST"
+      action="/save/"
+
+      >
+    <label for="email">Email:</label>
+
+    <input
+            id="email"
+            name="email"
+            type="email"
+            value="{{ email }}"
+            onchange="emailChanged()"
+    />
+<br>
+    <label for="quadrat">Quadrat:</label>
+    <select
+            name="quadrat" id="quadrat"
+            {% if email == "" %} disabled {% else %} enabled {% endif %}
+            onchange="quadratChanged()"
+    >
+        {% for opt in quadrats %}
+        <option value="{{ opt }}" {% if opt == quadrat %}selected{% endif %}>{{ opt }}</option>
+        {% endfor %}
+    </select>
+<br>
+    <label for="station">Station:</label>
+    <select name="station" id="station"
+            {% if quadrat in quadrats and quadrat != "Choose" %} enabled {% else %} disabled {% endif %}
+            onchange="stationChanged()"
+    >
+        {% for opt in stations %}
+        <option value="{{ opt }}" {% if opt == "Choose" %}selected{% endif %}>{{ opt }}</option>
+        {% endfor %}
+    </select>
+<br>
+    <label for="cloud">Cloud Cover:</label>
+
+    <select name="cloud" id="cloud" disabled onchange="cloudChanged()">
+        <option value="None">Not selected</option>
+        <option value="0">0% cover</option>
+        <option value="1">&lt;25% cover</option>
+        <option value="2">25-50% cover</option>
+        <option value="3">50-90% cover</option>
+        <option value="4">&gt;90% cover</option>
+    </select>
+<br>
+    <label for="wind">Wind Speed:</label>
+    <select name="wind" id="wind" disabled onchange="windChanged()">
+        <option value="None">Not selected</option>
+        <option value="0">Calm, smoke rises vertically</option>
+        <option value="1">1-5 km/h leaves stationary</option>
+        <option value="2">6-11 km/h leaves rustle</option>
+        <option value="3">12-19 km/h twigs move</option>
+        <option value="4">20+ km/h, stop survey</option>
+    </select>
+    </label>
+<br>
+    <label for="noise">Noise</label>
+    <select name="noise" id="noise" disabled onchange="noiseChanged()">
+        <option value="None">Not selected</option>
+        <option value="0">None</option>
+        <option value="1">Slight</option>
+        <option value="2">Medium</option>
+        <option value="3">Excessive</option>
+    </select>
+<br>
+    <label for="latitude">Latitude:</label>
+        <input
+                name="latitude"
+                id="latitude"
+                name="latitude"
+                type="text"
+                disabled
+        />
+<br>
+    <label for="longitude">Longitude:</label>
+    <input
+                name="longitude"
+                name="longitude"
+                id="longitude"
+                type="text"
+                disabled
+        />
+<br>
+    <button name="startButton" id="startButton" type="button" onclick="startSurvey()" disabled>Start Survey</button>
+    <p id="timer"></p>
+
+    <label for="detection">COHA detected:</label>
+
+        <select id="detection" name="detection" disabled onchange="detectionChanged()">
+            <option value="unset" selected></option>
+            <option value="no" >No</option>
+            <option value="yes">Yes</option>
+        </select>
+<br>
+    <label for="direction">Direction to bird (0-360 degrees from North):</label>
+
+        <input id="direction" name="direction" type="text" value="" disabled />
+<br>
+    <label for="distance">Distance:</label>
+    <input id="distance" name="distance" type="text" value="" disabled />
+
+<br>
+    <button id="submit" type="submit" disabled>Submit</button>
+
+</form>
+</div>
+<div id="bottom">
+    <p id="message">{{ message }}</p>
+</div>
+</body>
+</html>

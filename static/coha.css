@@ -1,0 +1,63 @@
+* {
+  box-sizing: border-box; /* not completely needed, yet useful */
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+
+  display: flex; /* or css grid for more intricate layouts */
+  flex-direction: column;
+}
+
+#top {
+  background-color: DarkGreen;
+  height: 600px;
+  border-bottom: 3px black;
+}
+
+#bottom  {
+  color: #E3B448;
+  background-color: DarkGreen;
+  height: 100px;
+  border-top: 3px black;
+}
+
+form {
+  color: #E3B448;
+  align-items: right;
+  justify-content: right;
+  background-color: #262;
+  border-radius: 20px;
+  box-sizing: border-box;
+  height: 600px;
+  padding: 20px;
+  width: 320px;
+}
+
+label {
+  width: 100%;
+  padding: 10px;
+}
+select {
+  float: right;
+  width: 100%;
+  padding:10px;
+  border-radius:10px;
+}
+input[text] {
+  float: right;
+  width: 100%%;
+  padding:10px;
+  border-radius:10px;
+}
+
+div.fullwidth {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+}
