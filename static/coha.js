@@ -4,6 +4,9 @@
 // UI state
 var timer = null;
 
+// COHA call audio file
+var sound = new Audio("/static/COHA.mp3");
+
 // Form state
 var emailSet = false;
 var quadratSet = false;
@@ -164,15 +167,15 @@ function startTimer(seconds, container, oncomplete) {
 }
 
 function playCall() {
-    let player = document.getElementById("player");
-    player.volume = 1.0;
-    player.play();
+    sound.pause();
+    sound.currentTime = 0;
+    sound.play();
+    alert("sound playing");
 }
 
 function stopAudio() {
-    let player = document.getElementById("player");
-    player.pause();
-    player.fastSeek(0)
+    sound.pause();
+    sound.currentTime = 0;
 }
 
 function firstCall() {
@@ -220,6 +223,6 @@ function startSurvey() {
     button.onclick = stopSurvey;
     messageField.textContent =
         "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call will play when countdown reaches 0.";
-    timer = startTimer(120, "timer", firstCall); // should be 120 seconds, fix if shorter
+    timer = startTimer(3, "timer", firstCall); // should be 120 seconds, fix if shorter
 
 }
