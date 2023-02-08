@@ -1,11 +1,33 @@
 // coha.js - control and validate input from the COHA survey form
 
+// Initialize audio on window load
+var context = null;
+var cohaBuffer;
+var audioReady = false;
+
+function initAudio() {
+    // load the audio into cohaBuffer
+    let request = new XMLHttpRequest();
+    request.open('GET', "/static/COHA.mp3", true);
+    request.responseType = 'arraybuffer';
+
+    // Decode asynchronously
+    request.onload = function() {
+    context.decodeAudioData(request.response,
+        function(buffer) {
+            cohaBuffer = buffer;
+            audioReady = true;
+        },
+        () => {
+            alert('failed to load COHA audio'); audioReady = false;
+        });
+    }
+    request.send();
+}
+
 
 // UI state
 var timer = null;
-
-// COHA call audio file
-var sound = new Audio("/static/COHA.mp3");
 
 // Form state
 var emailSet = false;
@@ -78,7 +100,12 @@ function detectionChanged() {
 
 function formChanged() {
     let submitButton = document.getElementById("submit");
-    const emailStr = document.getElementById("email").value
+    const emailStr = document.getElementById("email").value;
+
+    if (context === null) {
+        context = new AudioContext();
+        initAudio();
+    }
 
     // clear the message field
     document.getElementById("message").textContent = "unsaved changes";
@@ -167,15 +194,14 @@ function startTimer(seconds, container, oncomplete) {
 }
 
 function playCall() {
-    sound.pause();
-    sound.currentTime = 0;
-    sound.play();
-    alert("sound playing");
+    let source = context.createBufferSource(); // create a sound source
+    source.buffer = cohaBuffer;                // tell the source to use our buffer
+    source.connect(context.destination);       // connect the source to something, hopefully the speakers
+    source.start(0, 0, 20);   // play the source for 20 seconds starting at the beginning
 }
 
 function stopAudio() {
-    sound.pause();
-    sound.currentTime = 0;
+    alert("FIX: stopping playback not implemented");
 }
 
 function firstCall() {
