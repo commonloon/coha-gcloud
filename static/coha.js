@@ -1,9 +1,13 @@
 // coha.js - control and validate input from the COHA survey form
 
+// We want shorter timers when debugging
+var debug = false;
+
 // Initialize audio on window load
 var context = null;
 var cohaBuffer;
 var audioReady = false;
+var audioSource = null;
 
 function initAudio() {
     // load the audio into cohaBuffer
@@ -16,10 +20,10 @@ function initAudio() {
     context.decodeAudioData(request.response,
         function(buffer) {
             cohaBuffer = buffer;
-            audioReady = true;
         },
         () => {
-            alert('failed to load COHA audio'); audioReady = false;
+            alert('failed to load COHA audio');
+            audioReady = false;
         });
     }
     request.send();
@@ -112,6 +116,11 @@ function formChanged() {
 
     // Perform field validation and enable/disable form elements as required
     if (emailSet || (isEmail(emailStr))) {
+        // special email address triggers debug mode
+        if (emailStr === "debug@pacificloon.ca") {
+            debug = true;
+        }
+
         // Once we know the user, allow selection of the quadrat
         document.getElementById("quadrat").disabled = false;
 
@@ -194,35 +203,51 @@ function startTimer(seconds, container, oncomplete) {
 }
 
 function playCall() {
-    let source = context.createBufferSource(); // create a sound source
-    source.buffer = cohaBuffer;                // tell the source to use our buffer
-    source.connect(context.destination);       // connect the source to something, hopefully the speakers
-    source.start(0, 0, 20);   // play the source for 20 seconds starting at the beginning
+    // connect the audio source if we haven't done so before
+    audioSource = context.createBufferSource(); // create a sound source
+    audioSource.buffer = cohaBuffer;                // tell the source to use our buffer
+    audioSource.connect(context.destination);       // connect the source to something, hopefully the speakers
+    audioSource.start(0, 0, 20);   // play the source for 20 seconds starting at the beginning
+    audioReady = true;
 }
 
 function stopAudio() {
-    alert("FIX: stopping playback not implemented");
+    if (audioReady) {
+        audioSource.stop();
+    }
 }
 
 function firstCall() {
     let messageField = document.getElementById("message")
+    let timeout = 60;  // 20 seconds of call playback plus 40 seconds of observation time
+    if (debug) {
+        timeout = 22;  // shorter timeout when debugging
+    }
     messageField.textContent =
         "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call 2 will play when countdown reaches 0.";
     playCall();
-    timer = startTimer(60, "timer", secondCall);
+    timer = startTimer(timeout, "timer", secondCall);
 }
 function secondCall() {
     let messageField = document.getElementById("message")
+    let timeout = 60;  // 20 seconds of call playback plus 40 seconds of observation time
+    if (debug) {
+        timeout = 22;  // shorter timeout when debugging
+    }
     messageField.textContent =
         "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call 3 will play when countdown reaches 0.";
-    timer = startTimer(60, "timer", thirdCall);
+    timer = startTimer(timeout, "timer", thirdCall);
     playCall();
 }
 function thirdCall() {
-    let messageField = document.getElementById("message")
+    let messageField = document.getElementById("message");
+    let timeout = 180;  // length of the final survey period in seconds
+    if (debug) {
+        timeout = 22;  // shorter timeout for debugging
+    }
     messageField.textContent =
         "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Survey ends when  countdown reaches 0.";
-    timer = startTimer(180, "timer", surveyFinished);
+    timer = startTimer(timeout, "timer", surveyFinished);
     playCall();
 }
 function surveyFinished() {
@@ -245,10 +270,16 @@ function stopSurvey() {
 function startSurvey() {
     let button = document.getElementById("startButton");
     let messageField = document.getElementById("message")
+    let timeout = 120;  // length of the initial survey period, when no call is played
+
+    if (debug) {
+        timeout = 3;  // seconds, shorter timeout for debugging the web app
+    }
+
     button.textContent = "Stop Survey";
     button.onclick = stopSurvey;
     messageField.textContent =
         "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call will play when countdown reaches 0.";
-    timer = startTimer(3, "timer", firstCall); // should be 120 seconds, fix if shorter
 
+    timer = startTimer(timeout, "timer", firstCall); // should be 120 seconds, fix if shorter
 }
