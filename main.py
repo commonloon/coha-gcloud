@@ -24,7 +24,21 @@ def csvWriteToGoogleCloud(filename, columns, data):
     data_bucket_name = "coha-data"
     storage_client = storage.Client()
     bucket_name = "coha-data"
-    bucket = storage_client.create_bucket("coha-data")
+    try:
+        # first try to read from an existing bucket
+        bucket = storage_client.get_bucket(bucket_name)
+    except Exception as e:
+        bucket = None
+
+    if bucket is None:
+        # try creating the bucket if the read failed.
+        # TODO: use a more elegant check for bucket existence
+        try:
+            bucket = storage_client.create_bucket(bucket_name)
+        except Exception as e:
+            return "Failed to create bucket to save data.  Data NOT saved, sorry"
+
+    # files are basically all blobs in the google cloud
     blob = bucket.blob(filename)
     try:
         with blob.open('w') as csvfile:
