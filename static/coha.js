@@ -163,16 +163,63 @@ function startTimer(seconds, container, oncomplete) {
     return obj;
 }
 
+function playCall() {
+    let player = document.getElementById("player");
+    player.volume = 1.0;
+    player.play();
+}
+
+function stopAudio() {
+    let player = document.getElementById("player");
+    player.pause();
+    player.fastSeek(0)
+}
+
+function firstCall() {
+    let messageField = document.getElementById("message")
+    messageField.textContent =
+        "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call 2 will play when countdown reaches 0.";
+    playCall();
+    timer = startTimer(60, "timer", secondCall);
+}
+function secondCall() {
+    let messageField = document.getElementById("message")
+    messageField.textContent =
+        "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call 3 will play when countdown reaches 0.";
+    timer = startTimer(60, "timer", thirdCall);
+    playCall();
+}
+function thirdCall() {
+    let messageField = document.getElementById("message")
+    messageField.textContent =
+        "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Survey ends when  countdown reaches 0.";
+    timer = startTimer(180, "timer", surveyFinished);
+    playCall();
+}
+function surveyFinished() {
+    let messageField = document.getElementById("message")
+    messageField.textContent =
+        "Survey complete<br>Record detection and press Submit to save results.";
+    timer = startTimer(180, "timer", surveyFinished);
+}
+
 function stopSurvey() {
     let button = document.getElementById("startButton");
+    let messageField = document.getElementById("message")
+    messageField.textContent =
+        "Survey stopped<br>Record detection and press Submit to save results.";
     button.disabled = true;
     button.textContent = "Start Survey";
     timer.pause();
+    stopAudio();
 }
 function startSurvey() {
     let button = document.getElementById("startButton");
+    let messageField = document.getElementById("message")
     button.textContent = "Stop Survey";
     button.onclick = stopSurvey;
-    timer = startTimer(120, "timer", function() {alert("done")});
+    messageField.textContent =
+        "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call will play when countdown reaches 0.";
+    timer = startTimer(120, "timer", firstCall); // should be 120 seconds, fix if shorter
 
 }

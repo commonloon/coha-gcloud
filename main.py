@@ -2,6 +2,7 @@ import string
 import re
 import datetime
 import csv
+from google.cloud import storage
 
 from flask import Flask
 from flask import render_template, request
@@ -13,6 +14,30 @@ quadrats = list(string.ascii_uppercase)[:24]   # 24 Quadrats named A-X
 stations = [str(i) for i in range(1, 17, 1)]   # 16 stations in each quadrat, numbered 1-16
 quadrats.insert(0, unselected)
 stations.insert(0, unselected)
+
+def csvWriteToGoogleCloud(filename, columns, data):
+    """
+    Write a CSV file from an array of dicts (each array element is a dict with the relevant columnts)
+    columns: list of column names in the order you would like them written
+    data: array of dicts to write
+    """
+    data_bucket_name = "coha-data"
+    storage_client = storage.Client()
+    bucket_name = "coha-data"
+    bucket = storage_client.create_bucket("coha-data")
+    blob = bucket.blob(filename)
+    try:
+        with blob.open('w') as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=columns)
+            writer.writeheader()
+            writer.writerow(data)
+        msg = "saved data to file {}".format(filename)
+    except Exception as e:
+        msg = "Failed to save data"
+
+    return msg
+
+
 
 def isValidEmailFormat(s):
     s = s.strip();
@@ -33,7 +58,7 @@ def getCookieData():
 @app.route('/')
 def collect_data():  # put application's code here
     (email, quadrat) = getCookieData()
-    msg = "Complete Station Data before starting Survey"
+    msg = "Select Station and conditions before starting the survey"
     return render_template('coha-ui.html',
                            email=email, quadrat=quadrat, message=msg,
                            quadrats=quadrats, stations=stations)
@@ -72,15 +97,7 @@ def save_data():
 
     # save the data file
     filename = "{}.{:02d}.{}.csv".format(fields['quadrat'], int(fields['station']), timestamp)
-    try:
-        with open(filename, 'w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=csvColumns)
-            writer.writeheader()
-            writer.writerow(fields)
-        msg = "saved data to file {}".format(filename)
-    except Exception as e:
-        msg = "Failed to save data"
-
+    msg = csvWriteToGoogleCloud(filename, csvColumns, fields)
     return render_template('coha-ui.html',
                            email=email, quadrat=quadrat, message=msg,
                            quadrats=quadrats, stations=stations)

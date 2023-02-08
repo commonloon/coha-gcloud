@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>COHA in the City Survey</title>
     <link rel="stylesheet" type="text/css" href="/static/coha.css" />
+    <script src="/static/NoSleep.min.js"></script>
     <script src="/static/coha.js"></script>
 </head>
 <body>
@@ -121,6 +122,15 @@
 </div>
 <div id="bottom">
     <p id="message">{{ message }}</p>
+    <audio
+        id="player"
+        controls
+        src="/static/COHA.mp3">
+            <a href="/static/COHA.mp3">
+                Download audio
+            </a>
+    </audio>
+
 </div>
 </body>
 </html>
