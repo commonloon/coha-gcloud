@@ -9,14 +9,17 @@
     <script src="/static/coha.js"></script>
 </head>
 <body>
+<div class="container">
+<div class="leftmargin"><p>&nbsp</p></div>
+<div class="rightmargin"><p>&nbsp</p></div>
 
-<div id="top">
+<div class="content">
 <form id="cohaForm"
       name="cohaForm"
       onchange="formChanged()"
       method="POST"
       action="/save/"
-
+      class="content"
       >
     <label for="email">Email:</label>
 
@@ -27,7 +30,6 @@
             value="{{ email }}"
             onchange="emailChanged()"
     />
-<br>
     <label for="quadrat">Quadrat:</label>
     <select
             name="quadrat" id="quadrat"
@@ -38,7 +40,6 @@
         <option value="{{ opt }}" {% if opt == quadrat %}selected{% endif %}>{{ opt }}</option>
         {% endfor %}
     </select>
-<br>
     <label for="station">Station:</label>
     <select name="station" id="station"
             {% if quadrat in quadrats and quadrat != "Choose" %} enabled {% else %} disabled {% endif %}
@@ -48,7 +49,6 @@
         <option value="{{ opt }}" {% if opt == "Choose" %}selected{% endif %}>{{ opt }}</option>
         {% endfor %}
     </select>
-<br>
     <label for="cloud">Cloud Cover:</label>
 
     <select name="cloud" id="cloud" disabled onchange="cloudChanged()">
@@ -59,7 +59,6 @@
         <option value="3">50-90% cover</option>
         <option value="4">&gt;90% cover</option>
     </select>
-<br>
     <label for="wind">Wind Speed:</label>
     <select name="wind" id="wind" disabled onchange="windChanged()">
         <option value="None">Not selected</option>
@@ -70,7 +69,6 @@
         <option value="4">20+ km/h, stop survey</option>
     </select>
     </label>
-<br>
     <label for="noise">Noise</label>
     <select name="noise" id="noise" disabled onchange="noiseChanged()">
         <option value="None">Not selected</option>
@@ -79,7 +77,6 @@
         <option value="2">Medium</option>
         <option value="3">Excessive</option>
     </select>
-<br>
     <label for="latitude">Latitude:</label>
         <input
                 name="latitude"
@@ -88,7 +85,6 @@
                 type="text"
                 disabled
         />
-<br>
     <label for="longitude">Longitude:</label>
     <input
                 name="longitude"
@@ -97,31 +93,25 @@
                 type="text"
                 disabled
         />
-<br>
-    <button name="startButton" id="startButton" type="button" onclick="startSurvey()" disabled>Start Survey</button>
-    <p id="timer"></p>
+
 
     <label for="detection">COHA detected:</label>
-
-        <select id="detection" name="detection" disabled onchange="detectionChanged()">
-            <option value="unset" selected></option>
-            <option value="no" >No</option>
-            <option value="yes">Yes</option>
-        </select>
-<br>
+    <select id="detection" name="detection" disabled onchange="detectionChanged()">
+        <option value="unset" selected></option>
+        <option value="no" >No</option>
+        <option value="yes">Yes</option>
+    </select>
     <label for="direction">Direction to bird (0-360 degrees from North):</label>
 
         <input id="direction" name="direction" type="text" value="" disabled />
-<br>
     <label for="distance">Distance:</label>
     <input id="distance" name="distance" type="text" value="" disabled />
 
-<br>
     <button id="submit" type="submit" disabled>Submit</button>
 
 </form>
-</div>
-<div id="bottom">
+    <button name="startButton" id="startButton" type="button" onclick="startSurvey()" disabled>Start Survey</button>
+    <p id="timer"></p>
     <p id="message">{{ message }}</p>
     <audio
         id="player"
@@ -133,5 +123,6 @@
     </audio>
 
 </div>
+</div> <!-- container -->
 </body>
 </html>

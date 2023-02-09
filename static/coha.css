@@ -14,6 +14,11 @@ body {
   flex-direction: column;
 }
 
+.container {
+  display: grid;
+  grid-template-columns: 1fr 35fr 1fr;
+}
+
 #top {
   background-color: DarkGreen;
   height: 600px;
@@ -27,6 +32,16 @@ body {
   border-top: 3px black;
 }
 
+.content {
+  grid-column: 2 / 2;
+}
+.leftmargin {
+  grid-column: 1 / 1;
+}
+.rightmargin {
+  grid-column: 3 / 3;
+}
+
 form {
   color: #E3B448;
   align-items: right;
@@ -34,9 +49,9 @@ form {
   background-color: #262;
   border-radius: 20px;
   box-sizing: border-box;
-  height: 600px;
   padding: 20px;
   width: 320px;
+  display: grid;
 }
 
 label {
@@ -60,4 +75,8 @@ div.fullwidth {
   width: 100%;
   margin: 0;
   padding: 0;
+}
+
+label{
+  text-align: center;
 }
