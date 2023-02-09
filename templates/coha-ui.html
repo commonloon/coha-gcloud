@@ -21,7 +21,6 @@
       action="/save/"
       class="content"
       >
-    <label for="email">Email:</label>
 
     <input
             id="email"
@@ -29,24 +28,24 @@
             type="email"
             value="{{ email }}"
             onchange="emailChanged()"
+            class="input"
+            placeholder="Email address:"
     />
-    <label for="quadrat">Quadrat:</label>
     <select
             name="quadrat" id="quadrat"
             {% if email == "" %} disabled {% else %} enabled {% endif %}
             onchange="quadratChanged()"
     >
         {% for opt in quadrats %}
-        <option value="{{ opt }}" {% if opt == quadrat %}selected{% endif %}>{{ opt }}</option>
+        <option value="{{ opt }}" {% if opt == quadrat %}selected{% endif %}>Quadrat {{ opt }}</option>
         {% endfor %}
     </select>
-    <label for="station">Station:</label>
     <select name="station" id="station"
-            {% if quadrat in quadrats and quadrat != "Choose" %} enabled {% else %} disabled {% endif %}
+            {% if quadrat in quadrats and quadrat != "not selected" %} enabled {% else %} disabled {% endif %}
             onchange="stationChanged()"
     >
         {% for opt in stations %}
-        <option value="{{ opt }}" {% if opt == "Choose" %}selected{% endif %}>{{ opt }}</option>
+        <option value="{{ opt }}" {% if opt == "not selected" %}selected{% endif %}>Station {{ opt }}</option>
         {% endfor %}
     </select>
     <label for="cloud">Cloud Cover:</label>
@@ -77,35 +76,57 @@
         <option value="2">Medium</option>
         <option value="3">Excessive</option>
     </select>
-    <label for="latitude">Latitude:</label>
-        <input
-                name="latitude"
-                id="latitude"
-                name="latitude"
-                type="text"
-                disabled
-        />
-    <label for="longitude">Longitude:</label>
+    <input
+            name="latitude"
+            id="latitude"
+            name="latitude"
+            type="text"
+            class="input"
+            placeholder="Latitude"
+            disabled
+    />
     <input
                 name="longitude"
                 name="longitude"
                 id="longitude"
                 type="text"
+                class="input"
+                placeholder="Longitude"
                 disabled
         />
 
 
-    <label for="detection">COHA detected:</label>
     <select id="detection" name="detection" disabled onchange="detectionChanged()">
-        <option value="unset" selected></option>
+        <option value="unset" selected>Was COHA detected?</option>
         <option value="no" >No</option>
-        <option value="yes">Yes</option>
+        <option value="yes">Yes - COHA was seen or heard</option>
     </select>
-    <label for="direction">Direction to bird (0-360 degrees from North):</label>
 
-        <input id="direction" name="direction" type="text" value="" disabled />
-    <label for="distance">Distance:</label>
-    <input id="distance" name="distance" type="text" value="" disabled />
+    <input
+            id="direction"
+            name="direction"
+            type="text"
+            value=""
+            class="input"
+            placeholder="Direction to bird (0-360 degrees):"
+            disabled
+    />
+    <input
+            id="distance"
+            name="distance"
+            type="text"
+            value=""
+            class="input"
+            placeholder="Distance to bird (m)"
+            disabled
+    />
+    <textarea
+        id="notes"
+        name="notes"
+        rows="4"
+        class="input"
+        placeholder="Notes"
+    ></textarea>
 
     <button id="submit" type="submit" disabled>Submit</button>
 

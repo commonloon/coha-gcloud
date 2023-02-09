@@ -9,7 +9,7 @@ from flask import render_template, request
 
 app = Flask(__name__, template_folder="templates")
 
-unselected: str = "Choose"
+unselected: str = "not selected"
 quadrats = list(string.ascii_uppercase)[:24]   # 24 Quadrats named A-X
 stations = [str(i) for i in range(1, 17, 1)]   # 16 stations in each quadrat, numbered 1-16
 quadrats.insert(0, unselected)
@@ -94,7 +94,7 @@ def save_data():
         "quadrat", "station",
         "cloud", "wind", "noise", "latitude", "longitude",
         "detection", "direction", "distance",
-        "email"
+        "email", "notes"
     ]
     csvColumns = fieldNames.copy()
     csvColumns.append("timestamp")
