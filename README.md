@@ -18,9 +18,9 @@ The content of the CSV file looks like this:
    G,5,4,1,1,49.2476815,-123.0678571,no,,,debug@pacificloon.ca,"This is a test, not a real observation.",2023-02-10.00-19-59
 
 
-The main goal of this app is to make the data entry easier for participants. 
+The main goal of this web app is to make the data entry easier for participants. 
 It is intended to be used from a cellphone or tablet in the field to 
-record observations as they are made.  The app will automatically get the location data from a cell phone,
+record observations as they are made.  The website will automatically get the location data from a cell phone,
 provided location services are enabled on the phone or tablet.
 
 ## Android Users
@@ -28,7 +28,7 @@ provided location services are enabled on the phone or tablet.
 1. Make sure location services are enabled for your phone.
 2. Travel to the station where you will take your first observation
 3. Enter your email address in the first field.
-   1. The email address will be saved in your browser, so you should only have to do this the first time you use the app
+   1. The email address will be saved in your browser, so you should only have to do this the first time you use the website
 4. Select the survey quadrat
    1. the quadrat will also be saved in your browser.  You will only need to change it if you survey more than one quadrat.
 5. Select the station (1-16)
@@ -40,7 +40,7 @@ provided location services are enabled on the phone or tablet.
       1. pushing the button starts a two minute timer.  
          1. Use this time to look for hawks in the area
          2. if you see a COHA, press the button again to stop the audio playback
-      2. after two minutes, the app will play a recorded COHA call for 20 seconds, then pause for 40 seconds
+      2. after two minutes, the web app will play a recorded COHA call for 20 seconds, then pause for 40 seconds
          1. if you see or hear a COHA, press "Stop Survey" to stop the audio playback
       3. the app repeats the call playback/pause three times
       4. the final timer counts down an additional two minutes, during which time you should continue to look and listen for COHAs
@@ -55,5 +55,5 @@ provided location services are enabled on the phone or tablet.
 
 The procedure for iPhone users is very similar, except iOS won't let me automate the audio playback.
 This means you will need to manually time your two minute intervals and 40 second pauses in step 7.
-You can still use the app to play the call: pressing play on the audio controls at the bottom of the form 
+You can still use the web page to play the call: pressing play on the audio controls at the bottom of the form 
 will play a 20 second clip of COHA call.
