@@ -14,136 +14,138 @@
 <div class="rightmargin"><p>&nbsp</p></div>
 
 <div class="content">
-<form id="cohaForm"
-      name="cohaForm"
-      onchange="formChanged()"
-      method="POST"
-      action="/save/"
-      class="content"
-      >
+    <form id="cohaForm"
+          name="cohaForm"
+          onchange="formChanged()"
+          method="POST"
+          action="/save/"
+          class="content"
+          >
 
-    <input
-            id="email"
-            name="email"
-            type="email"
-            value="{{ email }}"
-            onchange="emailChanged()"
-            class="input"
-            placeholder="Email address:"
-    />
-    <select
-            name="quadrat" id="quadrat"
-            {% if email == "" %} disabled {% else %} enabled {% endif %}
-            onchange="quadratChanged()"
-    >
-        {% for opt in quadrats %}
-        <option value="{{ opt }}" {% if opt == quadrat %}selected{% endif %}>Quadrat {{ opt }}</option>
-        {% endfor %}
-    </select>
-    <select name="station" id="station"
-            {% if quadrat in quadrats and quadrat != "not selected" %} enabled {% else %} disabled {% endif %}
-            onchange="stationChanged()"
-    >
-        {% for opt in stations %}
-        <option value="{{ opt }}" {% if opt == "not selected" %}selected{% endif %}>Station {{ opt }}</option>
-        {% endfor %}
-    </select>
-    <label for="cloud">Cloud Cover:</label>
+        <input
+                id="email"
+                name="email"
+                type="email"
+                value="{{ email }}"
+                onchange="emailChanged()"
+                class="input"
+                placeholder="Email address:"
+        />
+        <select
+                name="quadrat" id="quadrat"
+                {% if email == "" %} disabled {% else %} enabled {% endif %}
+                onchange="quadratChanged()"
+        >
+            {% for opt in quadrats %}
+            <option value="{{ opt }}" {% if opt == quadrat %}selected{% endif %}>Quadrat {{ opt }}</option>
+            {% endfor %}
+        </select>
+        <select name="station" id="station"
+                {% if quadrat in quadrats and quadrat != "not selected" %} enabled {% else %} disabled {% endif %}
+                onchange="stationChanged()"
+        >
+            {% for opt in stations %}
+            <option value="{{ opt }}" {% if opt == "not selected" %}selected{% endif %}>Station {{ opt }}</option>
+            {% endfor %}
+        </select>
+        <label for="cloud">Cloud Cover:</label>
 
-    <select name="cloud" id="cloud" disabled onchange="cloudChanged()">
-        <option value="None">Not selected</option>
-        <option value="0">0% cover</option>
-        <option value="1">&lt;25% cover</option>
-        <option value="2">25-50% cover</option>
-        <option value="3">50-90% cover</option>
-        <option value="4">&gt;90% cover</option>
-    </select>
-    <label for="wind">Wind Speed:</label>
-    <select name="wind" id="wind" disabled onchange="windChanged()">
-        <option value="None">Not selected</option>
-        <option value="0">Calm, smoke rises vertically</option>
-        <option value="1">1-5 km/h leaves stationary</option>
-        <option value="2">6-11 km/h leaves rustle</option>
-        <option value="3">12-19 km/h twigs move</option>
-        <option value="4">20+ km/h, stop survey</option>
-    </select>
-    </label>
-    <label for="noise">Noise</label>
-    <select name="noise" id="noise" disabled onchange="noiseChanged()">
-        <option value="None">Not selected</option>
-        <option value="0">None</option>
-        <option value="1">Slight</option>
-        <option value="2">Medium</option>
-        <option value="3">Excessive</option>
-    </select>
-    <input
-            name="latitude"
-            id="latitude"
-            name="latitude"
-            type="text"
-            class="input"
-            placeholder="Latitude"
-            disabled
-    />
-    <input
-                name="longitude"
-                name="longitude"
-                id="longitude"
+        <select name="cloud" id="cloud" disabled onchange="cloudChanged()">
+            <option value="None">Not selected</option>
+            <option value="0">0% cover</option>
+            <option value="1">&lt;25% cover</option>
+            <option value="2">25-50% cover</option>
+            <option value="3">50-90% cover</option>
+            <option value="4">&gt;90% cover</option>
+        </select>
+        <label for="wind">Wind Speed:</label>
+        <select name="wind" id="wind" disabled onchange="windChanged()">
+            <option value="None">Not selected</option>
+            <option value="0">Calm, smoke rises vertically</option>
+            <option value="1">1-5 km/h leaves stationary</option>
+            <option value="2">6-11 km/h leaves rustle</option>
+            <option value="3">12-19 km/h twigs move</option>
+            <option value="4">20+ km/h, stop survey</option>
+        </select>
+        </label>
+        <label for="noise">Noise</label>
+        <select name="noise" id="noise" disabled onchange="noiseChanged()">
+            <option value="None">Not selected</option>
+            <option value="0">None</option>
+            <option value="1">Slight</option>
+            <option value="2">Medium</option>
+            <option value="3">Excessive</option>
+        </select>
+        <input
+                name="latitude"
+                id="latitude"
+                name="latitude"
                 type="text"
                 class="input"
-                placeholder="Longitude"
+                placeholder="Latitude"
                 disabled
         />
+        <input
+                    name="longitude"
+                    name="longitude"
+                    id="longitude"
+                    type="text"
+                    class="input"
+                    placeholder="Longitude"
+                    disabled
+            />
 
 
-    <select id="detection" name="detection" disabled onchange="detectionChanged()">
-        <option value="unset" selected>Was COHA detected?</option>
-        <option value="no" >No</option>
-        <option value="yes">Yes - COHA was seen or heard</option>
-    </select>
+        <select id="detection" name="detection" disabled onchange="detectionChanged()">
+            <option value="unset" selected>Was COHA detected?</option>
+            <option value="no" >No</option>
+            <option value="yes">Yes - COHA was seen or heard</option>
+        </select>
 
-    <input
-            id="direction"
-            name="direction"
-            type="text"
-            value=""
+        <input
+                id="direction"
+                name="direction"
+                type="text"
+                value=""
+                class="input"
+                placeholder="Direction to bird (0-360 degrees):"
+                disabled
+        />
+        <input
+                id="distance"
+                name="distance"
+                type="text"
+                value=""
+                class="input"
+                placeholder="Distance to bird (m)"
+                disabled
+        />
+        <textarea
+            id="notes"
+            name="notes"
+            rows="4"
             class="input"
-            placeholder="Direction to bird (0-360 degrees):"
-            disabled
-    />
-    <input
-            id="distance"
-            name="distance"
-            type="text"
-            value=""
-            class="input"
-            placeholder="Distance to bird (m)"
-            disabled
-    />
-    <textarea
-        id="notes"
-        name="notes"
-        rows="4"
-        class="input"
-        placeholder="Notes"
-    ></textarea>
+            placeholder="Notes"
+        ></textarea>
 
-    <button id="submit" type="submit" disabled>Submit</button>
+        <button id="submit" type="submit" disabled>Save Observation</button>
 
-</form>
-    <button name="startButton" id="startButton" type="button" onclick="startSurvey()" disabled>Start Survey</button>
-    <p id="timer"></p>
-    <p id="message">{{ message }}</p>
-    <audio
-        id="player"
-        controls
-        src="/static/COHA.mp3">
-            <a href="/static/COHA.mp3">
-                Download audio
-            </a>
-    </audio>
-
+    </form>
+    <div id="footer">
+        <button name="startButton" id="startButton" type="button" onclick="startSurvey()" disabled>Start Survey</button>
+        <p id="timer"></p>
+        <p id="message">{{ message }}</p>
+        <audio
+            id="player"
+            controls
+            src="/static/COHA.mp3">
+                <a href="/static/COHA.mp3">
+                    Download audio
+                </a>
+        </audio>
+    </div>
 </div>
 </div> <!-- container -->
+
 </body>
 </html>
