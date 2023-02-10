@@ -224,7 +224,7 @@ function firstCall() {
         timeout = 22;  // shorter timeout when debugging
     }
     messageField.textContent =
-        "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call 2 will play when countdown reaches 0.";
+        "Look and listen for COHA. Stop the survey if heard or spotted. Call 2 will play when countdown reaches 0.";
     playCall();
     timer = startTimer(timeout, "timer", secondCall);
 }
@@ -235,7 +235,7 @@ function secondCall() {
         timeout = 22;  // shorter timeout when debugging
     }
     messageField.textContent =
-        "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call 3 will play when countdown reaches 0.";
+        "Look and listen for COHA. Stop the survey if heard or spotted. Call 3 will play when countdown reaches 0.";
     timer = startTimer(timeout, "timer", thirdCall);
     playCall();
 }
@@ -246,14 +246,14 @@ function thirdCall() {
         timeout = 22;  // shorter timeout for debugging
     }
     messageField.textContent =
-        "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Survey ends when  countdown reaches 0.";
+        "Look and listen for COHA.  Stop the survey if heard or spotted.  Survey ends when  countdown reaches 0.";
     timer = startTimer(timeout, "timer", surveyFinished);
     playCall();
 }
 function surveyFinished() {
     let messageField = document.getElementById("message")
     messageField.textContent =
-        "Survey complete<br>Record detection and press Submit to save results.";
+        "Survey complete.  Record whether COHA was detected, then press \"Save Observation\" to save results.";
     timer = startTimer(180, "timer", surveyFinished);
 }
 
@@ -261,7 +261,7 @@ function stopSurvey() {
     let button = document.getElementById("startButton");
     let messageField = document.getElementById("message")
     messageField.textContent =
-        "Survey stopped<br>Record detection and press Submit to save results.";
+        "Survey stopped. Record whether COHA was detected, then press \"Save Observation\" to save results.";
     button.disabled = true;
     button.textContent = "Start Survey";
     timer.pause();
@@ -279,7 +279,7 @@ function startSurvey() {
     button.textContent = "Stop Survey";
     button.onclick = stopSurvey;
     messageField.textContent =
-        "Look and listen for COHA.<br>Stop the survey if heard or spotted.<br>Call will play when countdown reaches 0.";
+        "Look and listen for COHA.  Stop the survey if heard or spotted.  Call will play when countdown reaches 0.";
 
     timer = startTimer(timeout, "timer", firstCall); // should be 120 seconds, fix if shorter
 }
