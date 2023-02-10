@@ -53,7 +53,7 @@ provided location services are enabled on the phone or tablet.
 
 ## iPhone Users
 
-The procedure for iPhone users is very similar, except iOS won't let me automate the audio playback.
-This means you will need to manually time your two minute intervals and 40 second pauses in step 7.
-You can still use the web page to play the call: pressing play on the audio controls at the bottom of the form 
+The procedure for iPhone users is very similar to Android, except iOS won't let me automate the audio playback.
+This means iPhone and iPad users will need to manually time the two minute intervals and 40 second pauses in step 7.
+iOS users can still use the web page to play the call: pressing play on the audio controls at the bottom of the form 
 will play a 20 second clip of COHA call.
