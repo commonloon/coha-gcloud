@@ -9,7 +9,7 @@ var cohaBuffer;
 var audioReady = false;
 var audioSource = null;
 
-# TODO: improve validation of values in text fields, e.g. direction, distance
+//  TODO: improve validation of values in text fields, e.g. direction, distance
 
 function initAudio() {
     // load the audio into cohaBuffer
