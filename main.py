@@ -2,6 +2,7 @@ import string
 import re
 import datetime
 import csv
+import html
 from google.cloud import storage
 
 from flask import Flask
@@ -12,6 +13,9 @@ app = Flask(__name__, template_folder="templates")
 unselected: str = "not selected"
 quadrats = list(string.ascii_uppercase)[:24]   # 24 Quadrats named A-X
 stations = [str(i) for i in range(1, 17, 1)]   # 16 stations in each quadrat, numbered 1-16
+cloudValues = [str(i) for i in range(0, 5, 1)] # valid values are 0-4
+windValues  = [str(i) for i in range(0, 5, 1)] # valid values are 0-4
+noiseValues = [str(i) for i in range(0, 4, 1)] # valid values are 0-3
 quadrats.insert(0, unselected)
 stations.insert(0, unselected)
 
@@ -108,6 +112,29 @@ def save_data():
             fields[field] = ""
             msg += " Missing value for field:" + field
             pass
+
+    # sanitize the data, so the site is harder to exploit by bad actors
+    bad = "bad value"
+    fields["email"] = fields["email"][:40] if isValidEmailFormat(fields["email"]) else html.escape(fields["email"])[:20]
+    fields["quadrat"] = fields["quadrat"] if fields["quadrat"] in quadrats else bad
+    fields["station"] = fields["station"] if fields["station"] in stations  else bad
+    fields["cloud"] = fields["cloud"] if fields["cloud"] in cloudValues else bad
+    fields["wind"] = fields["wind"] if fields["wind"] in windValues else bad
+    fields["noise"] = fields["noise"] if fields["noise"] in noiseValues else bad
+    fields["notes"] = html.escape(fields["notes"])[:2048]
+    fields["latitude"] = str(float(fields["latitude"]))[:15]
+    fields["longitude"] = str(float(fields["longitude"]))[:15]
+    fields["detection"] = fields["detection"] if fields["detection"] in ["no", "yes"] else bad
+    if "direction" in fields.keys() and fields["direction"] != "":
+        fields["direction"] = re.sub("[^0-9]", "", fields["direction"])  # strip non-digits
+        fields["direction"] = str(int(fields["direction"]))[:4]
+    else:
+        fields["direction"] = ""
+    if "distance" in fields.keys() and fields["distance"] != "":
+        fields["distance"] = re.sub("[^0-9]", "", fields["distance"])  # strip non-digits
+        fields["distance"] = str(int(fields["distance"]))[:4]
+    else:
+        fields["distance"] = ""
 
     # save the data file
     filename = "{}.{:02d}.{}.csv".format(fields['quadrat'], int(fields['station']), timestamp)
