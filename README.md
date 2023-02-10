@@ -13,6 +13,11 @@ Each observation is saved as a CSV file with a name like "G.05.2023-02-10.00-19-
 The first letter of the filename indicates the survey quadrat, the next two digits are the station,
 folloed by the observation date and time in YYYY-MM-DD.HH-MM-SS format.
 
+The content of the CSV file looks like this:
+   quadrat,station,cloud,wind,noise,latitude,longitude,detection,direction,distance,email,notes,timestamp
+   G,5,4,1,1,49.2476815,-123.0678571,no,,,debug@pacificloon.ca,"This is a test, not a real observation.",2023-02-10.00-19-59
+
+
 The main goal of this app is to make the data entry easier for participants. 
 It is intended to be used from a cellphone or tablet in the field to 
 record observations as they are made.  The app will automatically get the location data from a cell phone,
