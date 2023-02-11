@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>COHA in the City Survey</title>
     <link rel="shortcut icon" href="/static/favicon.ico">
     <link rel="stylesheet" type="text/css" href="/static/coha.css" />
@@ -10,8 +11,6 @@
 </head>
 <body>
 <div class="container">
-<div class="leftmargin"><p>&nbsp</p></div>
-<div class="rightmargin"><p>&nbsp</p></div>
 
 <div class="content">
     <form id="cohaForm"
@@ -48,19 +47,17 @@
             <option value="{{ opt }}" {% if opt == "not selected" %}selected{% endif %}>Station {{ opt }}</option>
             {% endfor %}
         </select>
-        <label for="cloud">Cloud Cover:</label>
 
         <select name="cloud" id="cloud" disabled onchange="cloudChanged()">
-            <option value="None">Not selected</option>
+            <option value="None">Cloud - not selected</option>
             <option value="0">0% cover</option>
             <option value="1">&lt;25% cover</option>
             <option value="2">25-50% cover</option>
             <option value="3">50-90% cover</option>
             <option value="4">&gt;90% cover</option>
         </select>
-        <label for="wind">Wind Speed:</label>
         <select name="wind" id="wind" disabled onchange="windChanged()">
-            <option value="None">Not selected</option>
+            <option value="None">Wind - not selected</option>
             <option value="0">Calm, smoke rises vertically</option>
             <option value="1">1-5 km/h leaves stationary</option>
             <option value="2">6-11 km/h leaves rustle</option>
@@ -68,9 +65,8 @@
             <option value="4">20+ km/h, stop survey</option>
         </select>
         </label>
-        <label for="noise">Noise</label>
         <select name="noise" id="noise" disabled onchange="noiseChanged()">
-            <option value="None">Not selected</option>
+            <option value="None">Noise - not selected</option>
             <option value="0">None</option>
             <option value="1">Slight</option>
             <option value="2">Medium</option>
