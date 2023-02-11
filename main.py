@@ -1,6 +1,7 @@
 import string
 import re
 import datetime
+import pytz
 import csv
 import html
 from google.cloud import storage
@@ -88,7 +89,7 @@ def save_data():
     handle the submitted data for a single station
     :return:
     '''
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d.%H-%M-%S")
+    timestamp = datetime.datetime.now(tz=pytz.timezone("Canada/Pacific")).strftime("%Y-%m-%d.%H-%M-%S")
     form = request.form
     # Get the email address and quadrat from a cookie, if available
     (email, quadrat) = getCookieData()

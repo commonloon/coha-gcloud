@@ -4,16 +4,23 @@
 }
 
 input,select,textarea {
-  font-size: 16px;
+  font-size: 24px;
 }
 label,button {
-  font-size: 24px;
+  font-size: 32px;
   font-weight: bold;
 }
 button {
   border-radius: 15px;
 }
 
+html {
+  background: url('/static/COHA.jpg') no-repeat center center fixed;
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+}
 html, body {
   margin: 0;
   padding: 0;
@@ -45,13 +52,12 @@ form {
   color: #E3B448;
   align-items: center;
   justify-content: center;
-  background-color: #262;
   border-radius: 20px;
   box-sizing: border-box;
   padding: 20px;
   width: 100%;
   display: grid;
-  font-size: 16px;
+  font-size: 24x;
 }
 
 label {
@@ -114,14 +120,19 @@ textarea {
 
 #footer {
   display: grid;
-  background-color: #484;
+  color: #E3B448;
   border-radius: 20px;
   align-items: center;
   justify-items: center;
   justify-content: center;
 }
 
+#timer {
+    background-color: #281f18;
+}
+
 #message {
   margin-left:30px;
   margin-right: 30px;
+  background-color: #281f18;
 }
