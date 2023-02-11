@@ -6,6 +6,11 @@
     <title>COHA in the City Survey</title>
     <link rel="shortcut icon" href="/static/favicon.ico">
     <link rel="stylesheet" type="text/css" href="/static/coha.css" />
+    {% if iphone %}
+        <link rel="stylesheet" type="text/css" href="/static/iphone.css" />
+    {% else %}
+        <link rel="stylesheet" type="text/css" href="/static/android.css" />
+    {% endif %}
     <script src="/static/NoSleep.min.js"></script>
     <script src="/static/coha.js"></script>
 </head>

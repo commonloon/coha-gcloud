@@ -3,16 +3,9 @@
   font-family: "Century Schoolbook L"
 }
 
-
-/* font sizes for iOS devices that scale websites up to 3x*/
-input, select, textarea {
-  font-size: 24px;
-}
 label, button {
-  font-size: 24px;
   font-weight: bold;
 }
-
 button {
   border-radius: 15px;
 }
@@ -31,7 +24,6 @@ html, body {
 }
 
 body {
-  font-size: 24px;
   display: flex; /* or css grid for more intricate layouts */
   flex-direction: column;
 }
@@ -60,7 +52,6 @@ form {
   padding: 20px;
   width: 100%;
   display: grid;
-  font-size: 24px;
 }
 
 label {
@@ -134,7 +125,6 @@ textarea {
   background-color: #281f18;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
-  font-size: 32px;
 }
 
 #message {
