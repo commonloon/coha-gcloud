@@ -9,9 +9,6 @@ from google.cloud import storage
 from flask import Flask
 from flask import render_template, request
 
-from ua_parser import user_agent_parser
-from werkzeug.user_agent import UserAgent
-from werkzeug.utils import cached_property
 
 app = Flask(__name__, template_folder="templates")
 
@@ -24,30 +21,6 @@ noiseValues = [str(i) for i in range(0, 4, 1)] # valid values are 0-3
 quadrats.insert(0, unselected)
 stations.insert(0, unselected)
 
-
-class ParsedUserAgent(UserAgent):
-    """
-    We need to know the platform in order to set font sizes appropriately for Android and iOS
-    """
-    @cached_property
-    def _details(self):
-        return user_agent_parser.Parse(self.string)
-
-    @property
-    def platform(self):
-        return self._details['os']['family']
-
-    @property
-    def browser(self):
-        return self._details['user_agent']['family']
-
-    @property
-    def version(self):
-        return '.'.join(
-            part
-            for key in ('major', 'minor', 'patch')
-            if (part := self._details['user_agent'][key]) is not None
-        )
 
 def csvWriteToGoogleCloud(filename, columns, data):
     """
