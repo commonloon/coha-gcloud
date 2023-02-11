@@ -87,15 +87,18 @@ function stationChanged() {
 }
 
 function cloudChanged() {
-    cloudSet = true;
+    let val = document.getElementById("cloud").value;
+    cloudSet = val in ["0", "1", "2", "3", "4"];
 }
 
 function windChanged() {
-    windSet = true;
+    let val = document.getElementById("wind").value;
+    windSet = val in ["0", "1", "2", "3", "4"];
 }
 
 function noiseChanged() {
-    noiseSet = true;
+    let val = document.getElementById("noise").value;
+    noiseSet = val in ["0", "1", "2", "3"];
 }
 
 function detectionChanged() {
@@ -169,6 +172,9 @@ function formChanged() {
                     // other required fields have been assigned values.
                     let detectionValue = document.getElementById("detection").value;
                     submitButton.disabled = !(detectionValue === "yes" || detectionValue === "no");
+                } else {
+                    // conditions must be specified before submitting form
+                    submitButton.disabled = true;
                 }
             }
         }

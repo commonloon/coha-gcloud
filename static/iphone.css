@@ -1,0 +1,6 @@
+body, input, input[text], form, select, textarea, label, button {
+  font-size: 24px;
+}
+#timer {
+    font-size: 32px;
+}

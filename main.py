@@ -9,6 +9,7 @@ from google.cloud import storage
 from flask import Flask
 from flask import render_template, request
 
+
 app = Flask(__name__, template_folder="templates")
 
 unselected: str = "not selected"
@@ -19,6 +20,7 @@ windValues  = [str(i) for i in range(0, 5, 1)] # valid values are 0-4
 noiseValues = [str(i) for i in range(0, 4, 1)] # valid values are 0-3
 quadrats.insert(0, unselected)
 stations.insert(0, unselected)
+
 
 def csvWriteToGoogleCloud(filename, columns, data):
     """
@@ -77,9 +79,14 @@ def getCookieData():
 @app.route('/')
 def collect_data():  # put application's code here
     (email, quadrat) = getCookieData()
-    msg = "Select Station and conditions before starting the survey"
+    # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
+    # Figure out the platform from the user-agent header.
+    agent = str(request.headers.get("user-agent"))
+    iphone = re.search('iPhone', agent) is not None
+
+    msg = "Select Station and conditions before starting the survey."
     return render_template('coha-ui.html',
-                           email=email, quadrat=quadrat, message=msg,
+                           email=email, quadrat=quadrat, message=msg, iphone=iphone,
                            quadrats=quadrats, stations=stations)
 
 
@@ -139,9 +146,15 @@ def save_data():
 
     # save the data file
     filename = "{}.{:02d}.{}.csv".format(fields['quadrat'], int(fields['station']), timestamp)
+
+    # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
+    # Figure out the platform from the user-agent header.
+    agent = str(request.headers.get("user-agent"))
+    iphone = re.search('iPhone', agent) is not None
+
     msg = csvWriteToGoogleCloud(filename, csvColumns, fields)
     return render_template('coha-ui.html',
-                           email=email, quadrat=quadrat, message=msg,
+                           email=email, quadrat=quadrat, message=msg, iphone=iphone,
                            quadrats=quadrats, stations=stations)
 
 if __name__ == '__main__':
