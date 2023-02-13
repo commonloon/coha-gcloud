@@ -3,6 +3,51 @@
 // We want shorter timers when debugging
 var debug = false;
 
+// Bounds of the survey area
+var quadrats = [
+    "A", "B", "C", "D", "E", "F", "G", "H",
+    "I", "J", "K", "L", "M", "N", "O", "P",
+    "Q", "R", "S", "T", "U", "V", "W", "X",
+];
+var surveyBounds = {
+    west: -123.157770,
+    north: 49.263912,
+    south: 49.209423,
+    east: -122.937837
+};
+var stationWidth = (surveyBounds.east- surveyBounds.west) / (8 * 4);
+var stationHeight = (surveyBounds.north - surveyBounds.south) / (3 * 4);
+var stationBoundsTemplate = {
+    1: {north: 0, west: 0 * stationWidth},
+    2: {north: 0, west: 1 * stationWidth},
+    3: {north: 0, west: 2 * stationWidth},
+    4: {north: 0, west: 3 * stationWidth},
+    5: {north: 1 * stationHeight, west: 3 * stationWidth},
+    6: {north: 1 * stationHeight, west: 2 * stationWidth},
+    7: {north: 1 * stationHeight, west: 1 * stationWidth},
+    8: {north: 1 * stationHeight, west: 0 * stationWidth},
+    9: {north: 2 * stationHeight, west: 0 * stationWidth},
+    10: {north: 2 * stationHeight, west: 1 * stationWidth},
+    11: {north: 2 * stationHeight, west: 2 * stationWidth},
+    12: {north: 2 * stationHeight, west: 3 * stationWidth},
+    13: {north: 3 * stationHeight, west: 3 * stationWidth},
+    14: {north: 3 * stationHeight, west: 2 * stationWidth},
+    15: {north: 3 * stationHeight, west: 1 * stationWidth},
+    16: {north: 3 * stationHeight, west: 0 * stationWidth},
+}
+var stationBounds = null;
+var quadratWidth = stationWidth * 4;
+var quadratHeight = stationHeight * 4;
+var quadratBounds = null;
+
+// initialize the quadrat boundaries if quadrat is set by cookie
+window.onload = () => {
+    emailChanged();
+    quadratChanged();
+}
+
+
+
 // Initialize audio on window load
 var context = null;
 var cohaBuffer;
@@ -10,6 +55,24 @@ var audioReady = false;
 var audioSource = null;
 
 //  TODO: improve validation of values in text fields, e.g. direction, distance
+
+function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+  var R = 6371; // Radius of the earth in km
+  var dLat = deg2rad(lat2-lat1);  // deg2rad below
+  var dLon = deg2rad(lon2-lon1);
+  var a =
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
+    Math.sin(dLon/2) * Math.sin(dLon/2)
+    ;
+  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  var d = R * c; // Distance in km
+  return d;
+}
+
+function deg2rad(deg) {
+  return deg * (Math.PI/180)
+}
 
 function initAudio() {
     // load the audio into cohaBuffer
@@ -60,29 +123,94 @@ function emailChanged() {
     }
 }
 function isValidQuadrat(quadrat) {
-    return quadrat.search("^[A-X]$") === 0
+    return quadrats.indexOf(quadrat) != -1;
 }
 function quadratChanged() {
     let quadrat = document.getElementById("quadrat").value;
     quadratSet = isValidQuadrat(quadrat);
 
-    // Save the quadrat as a browser cookie so the user doesn't have to constantly re-enter it
     if (quadratSet) {
+        // Save the quadrat as a browser cookie so the user doesn't have to constantly re-enter it
         document.cookie = 'quadrat='+quadrat;
+        // Calculate the boundaries of the quadrat
+        let ix = quadrats.indexOf(quadrat);
+        let r = Math.floor(ix / 8);
+        let c = ix % 8;
+        quadratBounds = {};
+        quadratBounds.north = surveyBounds.north - r * quadratHeight;
+        quadratBounds.west = surveyBounds.west + c * quadratWidth;
+        quadratBounds.east = quadratBounds.west + quadratWidth;
+        quadratBounds.south = quadratBounds.north - quadratHeight;
+
     } else {
+        quadratBounds = null;
         document.cookie = 'quadrat=Choose';
     }
 
+}
+
+function distanceFromStation(lat, long, bounds) {
+    let lt = (bounds.north - bounds.south) / 2 + bounds.south;
+    let lo = (bounds.east - bounds.west) / 2 + bounds.west;
+
+    dNorthSouth = getDistanceFromLatLonInKm(lt, lo, lat, lo);
+    dEastWest = getDistanceFromLatLonInKm(lt, lo, lt, long);
+
+    nsDir = lat > lt ?  "north" : "south";
+    ewDir = lo < long ? "east" : "west";
+
+    message = dNorthSouth.toString() + "km " + nsDir + " and " + dEastWest.toString() + "km " + ewDir;
+    message = "Current location is " + message + " from the center of this station";
+    return message
 }
 
 function stationChanged() {
     let val = document.getElementById("station").value;
     if (val === "Not selected" ) {
         stationSet = false;
+        stationBounds = null;
     } else {
         // station must be in the range 1-16
         let n = Number.parseInt(val);
         stationSet = (0 < n) && (n < 17);
+        if (stationSet) {
+            let station = n;
+            stationBounds = {};
+
+            stationBounds.north = quadratBounds.north - stationBoundsTemplate[station].north;
+            stationBounds.west = quadratBounds.west + stationBoundsTemplate[station].west;
+            stationBounds.south = stationBounds.north - stationHeight;
+            stationBounds.east = stationBounds.west + stationWidth;
+
+            // Try to set the location fields automatically.
+            let latField = document.getElementById("latitude");
+            let longField = document.getElementById("longitude");
+            latField.disabled = false;
+            longField.disabled = false;
+
+            navigator.geolocation.getCurrentPosition(function (position) {
+                console.log("Latitude is :", position.coords.latitude);
+                console.log("Longitude is :", position.coords.longitude);
+                let lt = position.coords.latitude;
+                let lo = position.coords.longitude;
+                let boundsMsg = "The bounds of this station are (" 
+                    + stationBounds.south.toString() + "," + stationBounds.west.toString() + ") to ("
+                    + stationBounds.north.toString() + "," + stationBounds.east.toString() + ")" ;
+
+                if ((stationBounds.west <= lo) && (lo <= stationBounds.east)) {
+                    longField.value = position.coords.longitude;
+                } else {
+                    let d = getDistanceFromLatLonInKm(stationBounds.north, stationBounds.west, lt, lo);
+                    alert(distanceFromStation(lt, lo, stationBounds));
+                }
+                if ((stationBounds.south <= lt) && (lt <= stationBounds.north)) {
+                    latField.value = position.coords.latitude;
+                } else {
+                    alert(distanceFromStation(lt, lo, stationBounds));
+                }
+
+            });
+        }
     }
 }
 
@@ -141,21 +269,6 @@ function formChanged() {
                 document.getElementById("detection").disabled = false;
 
                 if (windSet && cloudSet && noiseSet) {
-                    // once we know the survey conditions, get the current location
-                    // and enable playing the recording
-                    let latField = document.getElementById("latitude");
-                    let longField = document.getElementById("longitude");
-                    latField.disabled = false;
-                    longField.disabled = false;
-
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        console.log("Latitude is :", position.coords.latitude);
-                        console.log("Longitude is :", position.coords.longitude);
-                        latField.value = position.coords.latitude;
-                        longField.value = position.coords.longitude;
-
-
-                    });
                     // enable the start button
                     document.getElementById("startButton").disabled = false;
 
