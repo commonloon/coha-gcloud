@@ -127,7 +127,7 @@ function distanceFromStation(lat, long, nominalLocation) {
 
     let message = dNorthSouth.toFixed(2) + "km " + nsDir + " and " + dEastWest.toFixed(2) + "km " + ewDir;
     message = "Current location is " + message + " from the nominal location of this station.";
-    message += " Did you select the correct station?";
+    message += " Did you select the correct station? If so, please double-check the latitude/longitude values below";
     return message
 }
 
