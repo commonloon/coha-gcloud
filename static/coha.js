@@ -115,7 +115,7 @@ function quadratChanged() {
 
 }
 
-function distanceFromStation(lat, long, nominalLocation) {
+function distanceFromStation(quadrat, station, lat, long, nominalLocation) {
     let lt = nominalLocation.latitude;
     let lo = nominalLocation.longitude;
 
@@ -126,8 +126,9 @@ function distanceFromStation(lat, long, nominalLocation) {
     ewDir = lo < long ? "east" : "west";
 
     let message = dNorthSouth.toFixed(2) + "km " + nsDir + " and " + dEastWest.toFixed(2) + "km " + ewDir;
-    message = "Current location is " + message + " from the nominal location of this station.";
-    message += " Did you select the correct station? If so, please double-check the latitude/longitude values below";
+    message = "Current location is " + message + " from the nominal location of ";
+    message += "quadrat " + quadrat + " station " + station + ". ";
+    message += "Did you select the correct station? If so, please double-check the latitude/longitude values below";
     return message
 }
 
@@ -161,7 +162,7 @@ function stationChanged() {
                 longField.value = lo;
                 latField.value = lt;
                 if (d > 0.4) {
-                    alert(distanceFromStation(lt, lo, nominalLocation));
+                    alert(distanceFromStation(quadrat, station, lt, lo, nominalLocation));
                 }
             });
         }
