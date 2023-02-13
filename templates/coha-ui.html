@@ -15,6 +15,9 @@
     <script src="/static/coha.js"></script>
 </head>
 <body>
+<script>
+    var stationCoordinates = JSON.parse( '{{ coords | tojson | safe }}');
+</script>
 <div class="container">
 
 <div class="content">

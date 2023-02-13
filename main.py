@@ -58,6 +58,22 @@ def csvWriteToGoogleCloud(filename, columns, data):
 
     return msg
 
+def loadStationCoords():
+    """
+    Load prior station coordinates so we can sanity check the new station location
+    """
+    coords = {}
+    with open("static/COHA-Station-Coordinates-v1.csv", "r") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            (quadrat, station, latitude, longitude, year) = \
+                (row["Quadrat"], row["Station"], row["latitude"], row["longitude"], row["year taken"])
+            if quadrat not in coords:
+                coords[quadrat] = {}
+            if station not in coords[quadrat]:
+                coords[quadrat][station] = {}
+            coords[quadrat][station] = {"latitude": latitude, "longitude": longitude, "year": year}
+    return coords
 
 
 def isValidEmailFormat(s):
@@ -87,7 +103,7 @@ def collect_data():  # put application's code here
     msg = "Select Station and conditions before starting the survey."
     return render_template('coha-ui.html',
                            email=email, quadrat=quadrat, message=msg, iphone=iphone,
-                           quadrats=quadrats, stations=stations)
+                           quadrats=quadrats, stations=stations, coords=loadStationCoords())
 
 
 @app.route('/save/', methods=['GET', 'POST'])
