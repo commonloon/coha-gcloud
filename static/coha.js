@@ -15,30 +15,7 @@ var surveyBounds = {
     south: 49.209423,
     east: -122.937837
 };
-var stationWidth = (surveyBounds.east- surveyBounds.west) / (8 * 4);
-var stationHeight = (surveyBounds.north - surveyBounds.south) / (3 * 4);
-var stationBoundsTemplate = {
-    1: {north: 0, west: 0 * stationWidth},
-    2: {north: 0, west: 1 * stationWidth},
-    3: {north: 0, west: 2 * stationWidth},
-    4: {north: 0, west: 3 * stationWidth},
-    5: {north: 1 * stationHeight, west: 3 * stationWidth},
-    6: {north: 1 * stationHeight, west: 2 * stationWidth},
-    7: {north: 1 * stationHeight, west: 1 * stationWidth},
-    8: {north: 1 * stationHeight, west: 0 * stationWidth},
-    9: {north: 2 * stationHeight, west: 0 * stationWidth},
-    10: {north: 2 * stationHeight, west: 1 * stationWidth},
-    11: {north: 2 * stationHeight, west: 2 * stationWidth},
-    12: {north: 2 * stationHeight, west: 3 * stationWidth},
-    13: {north: 3 * stationHeight, west: 3 * stationWidth},
-    14: {north: 3 * stationHeight, west: 2 * stationWidth},
-    15: {north: 3 * stationHeight, west: 1 * stationWidth},
-    16: {north: 3 * stationHeight, west: 0 * stationWidth},
-}
-var stationBounds = null;
-var quadratWidth = stationWidth * 4;
-var quadratHeight = stationHeight * 4;
-var quadratBounds = null;
+
 
 // initialize the quadrat boundaries if quadrat is set by cookie
 window.onload = () => {
@@ -132,26 +109,15 @@ function quadratChanged() {
     if (quadratSet) {
         // Save the quadrat as a browser cookie so the user doesn't have to constantly re-enter it
         document.cookie = 'quadrat='+quadrat;
-        // Calculate the boundaries of the quadrat
-        let ix = quadrats.indexOf(quadrat);
-        let r = Math.floor(ix / 8);
-        let c = ix % 8;
-        quadratBounds = {};
-        quadratBounds.north = surveyBounds.north - r * quadratHeight;
-        quadratBounds.west = surveyBounds.west + c * quadratWidth;
-        quadratBounds.east = quadratBounds.west + quadratWidth;
-        quadratBounds.south = quadratBounds.north - quadratHeight;
-
     } else {
-        quadratBounds = null;
         document.cookie = 'quadrat=Choose';
     }
 
 }
 
-function distanceFromStation(lat, long, bounds) {
-    let lt = (bounds.north - bounds.south) / 2 + bounds.south;
-    let lo = (bounds.east - bounds.west) / 2 + bounds.west;
+function distanceFromStation(lat, long, nominalLocation) {
+    let lt = nominalLocation.latitude;
+    let lo = nominalLocation.longitude;
 
     dNorthSouth = getDistanceFromLatLonInKm(lt, lo, lat, lo);
     dEastWest = getDistanceFromLatLonInKm(lt, lo, lt, long);
@@ -159,8 +125,9 @@ function distanceFromStation(lat, long, bounds) {
     nsDir = lat > lt ?  "north" : "south";
     ewDir = lo < long ? "east" : "west";
 
-    message = dNorthSouth.toString() + "km " + nsDir + " and " + dEastWest.toString() + "km " + ewDir;
-    message = "Current location is " + message + " from the center of this station";
+    let message = dNorthSouth.toFixed(2) + "km " + nsDir + " and " + dEastWest.toFixed(2) + "km " + ewDir;
+    message = "Current location is " + message + " from the nominal location of this station.";
+    message += " Did you select the correct station?";
     return message
 }
 
@@ -168,19 +135,13 @@ function stationChanged() {
     let val = document.getElementById("station").value;
     if (val === "Not selected" ) {
         stationSet = false;
-        stationBounds = null;
     } else {
         // station must be in the range 1-16
         let n = Number.parseInt(val);
         stationSet = (0 < n) && (n < 17);
         if (stationSet) {
-            let station = n;
-            stationBounds = {};
-
-            stationBounds.north = quadratBounds.north - stationBoundsTemplate[station].north;
-            stationBounds.west = quadratBounds.west + stationBoundsTemplate[station].west;
-            stationBounds.south = stationBounds.north - stationHeight;
-            stationBounds.east = stationBounds.west + stationWidth;
+            let station = n.toString();
+            let quadrat = document.getElementById("quadrat").value;
 
             // Try to set the location fields automatically.
             let latField = document.getElementById("latitude");
@@ -189,26 +150,19 @@ function stationChanged() {
             longField.disabled = false;
 
             navigator.geolocation.getCurrentPosition(function (position) {
+                let nominalLocation = stationCoordinates[quadrat][station];
                 console.log("Latitude is :", position.coords.latitude);
                 console.log("Longitude is :", position.coords.longitude);
                 let lt = position.coords.latitude;
                 let lo = position.coords.longitude;
-                let boundsMsg = "The bounds of this station are (" 
-                    + stationBounds.south.toString() + "," + stationBounds.west.toString() + ") to ("
-                    + stationBounds.north.toString() + "," + stationBounds.east.toString() + ")" ;
 
-                if ((stationBounds.west <= lo) && (lo <= stationBounds.east)) {
-                    longField.value = position.coords.longitude;
-                } else {
-                    let d = getDistanceFromLatLonInKm(stationBounds.north, stationBounds.west, lt, lo);
-                    alert(distanceFromStation(lt, lo, stationBounds));
+                // update the position regardless, but warn the user if they're far from the station
+                let d = getDistanceFromLatLonInKm(nominalLocation.latitude, nominalLocation.longitude, lt, lo);
+                longField.value = lo;
+                latField.value = lt;
+                if (d > 0.4) {
+                    alert(distanceFromStation(lt, lo, nominalLocation));
                 }
-                if ((stationBounds.south <= lt) && (lt <= stationBounds.north)) {
-                    latField.value = position.coords.latitude;
-                } else {
-                    alert(distanceFromStation(lt, lo, stationBounds));
-                }
-
             });
         }
     }

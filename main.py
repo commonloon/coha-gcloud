@@ -171,7 +171,7 @@ def save_data():
     msg = csvWriteToGoogleCloud(filename, csvColumns, fields)
     return render_template('coha-ui.html',
                            email=email, quadrat=quadrat, message=msg, iphone=iphone,
-                           quadrats=quadrats, stations=stations)
+                           quadrats=quadrats, stations=stations, coords=loadStationCoords())
 
 if __name__ == '__main__':
     app.run()
