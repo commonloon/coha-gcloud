@@ -226,7 +226,7 @@ def show_map():
     data = getDataFiles(year)
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
-    return render_template('coha-map.html', data=data)
+    return render_template('coha-map.html', data=data, year=year)
 
 
 
