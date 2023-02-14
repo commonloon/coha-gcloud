@@ -3,5 +3,6 @@ Flask==2.2.2
 google-cloud-storage
 gunicorn==20.1.0
 pytz
+simplejson
 ua-parser
 virtualenv

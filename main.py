@@ -4,10 +4,19 @@ import datetime
 import pytz
 import csv
 import html
+import simplejson as json
 from google.cloud import storage
 
 from flask import Flask
 from flask import render_template, request
+
+STORAGE_BUCKET_NAME= "coha-data"
+FIELD_NAMES = [
+    "quadrat", "station",
+    "cloud", "wind", "noise", "latitude", "longitude",
+    "detection", "direction", "distance",
+    "email", "notes"
+]
 
 
 app = Flask(__name__, template_folder="templates")
@@ -28,9 +37,8 @@ def csvWriteToGoogleCloud(filename, columns, data):
     columns: list of column names in the order you would like them written
     data: array of dicts to write
     """
-    data_bucket_name = "coha-data"
     storage_client = storage.Client()
-    bucket_name = "coha-data"
+    bucket_name = STORAGE_BUCKET_NAME
     try:
         # first try to read from an existing bucket
         bucket = storage_client.get_bucket(bucket_name)
@@ -57,6 +65,43 @@ def csvWriteToGoogleCloud(filename, columns, data):
         msg = "Failed to save data"
 
     return msg
+
+def getDataFiles(year=2023):
+    """
+    Read all the data files for the specified year and return an array of dicts whose keys are the field names
+
+    """
+    data = []
+    storage_client = storage.Client()
+    bucket_name = STORAGE_BUCKET_NAME
+    # first try to read from an existing bucket
+    bucket = storage_client.get_bucket(bucket_name)
+
+    if bucket is None:
+        #TODO: display error page on failure
+        return "Failed to open data bucket " + STORAGE_BUCKET_NAME + ", sorry"
+
+    # check all blobs in the bucket, adding those from this year to the list
+    year = str(year)  # need the year as a string
+    pattern = "[A-X]\.[0-9][0-9]\." + year
+    names = []
+    for blob in storage_client.list_blobs(STORAGE_BUCKET_NAME):
+        name = blob.name
+        if re.match(pattern, name):
+            names.append(name)
+
+    for name in names:
+        blob = bucket.blob(name)
+        try:
+            with blob.open("r") as csvfile:
+                reader = csv.DictReader(csvfile)
+                for row in reader:
+                    data.append(dict(row))
+        except Exception as e:
+            pass  # silently skip files we can't open
+    return data
+
+
 
 def loadStationCoords():
     """
@@ -118,12 +163,7 @@ def save_data():
     (email, quadrat) = getCookieData()
 
     # get the form data
-    fieldNames = [
-        "quadrat", "station",
-        "cloud", "wind", "noise", "latitude", "longitude",
-        "detection", "direction", "distance",
-        "email", "notes"
-    ]
+    fieldNames = FIELD_NAMES
     csvColumns = fieldNames.copy()
     csvColumns.append("timestamp")
     fields = {"timestamp": timestamp}
@@ -172,6 +212,23 @@ def save_data():
     return render_template('coha-ui.html',
                            email=email, quadrat=quadrat, message=msg, iphone=iphone,
                            quadrats=quadrats, stations=stations, coords=loadStationCoords())
+
+
+@app.route('/map/')
+def show_map():
+    """
+    Display a map of the datapoints received for the most recent year
+    """
+    # Get the current year
+    year = datetime.date.today().year
+
+    # look for files matching the current year.  If none found, look for previous year
+    data = getDataFiles(year)
+
+    # Build a structure to pass to the web template.  The template will handle all the map stuff.
+    return render_template('coha-map.html', data=data)
+
+
 
 if __name__ == '__main__':
     app.run()
