@@ -237,7 +237,7 @@ def show_map():
     year = datetime.date.today().year
 
     # look for files matching the current year.  If none found, look for previous year
-    (data, years) = getData(year)
+    data = getData(year)
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
     return render_template('coha-map.html', data=data, year=year)

@@ -4,3 +4,28 @@
   width: 100%; /* The width is the width of the web page */
   margin-top: 20px;
 }
+
+html {
+  background: url('/static/COHA.jpg') no-repeat center top fixed;
+  /*
+  -webkit-background-size: cover;
+  -moz-background-size: cover;
+  -o-background-size: cover;
+  background-size: cover;
+*/
+}
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  display: flex; /* or css grid for more intricate layouts */
+  flex-direction: column;
+}
+h1, h2 {
+    color: #E3B448;
+    background: #281f18;
+    opacity: 0.7;
+}
