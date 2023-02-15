@@ -59,6 +59,29 @@ This means iPhone and iPad users will need to manually time the two minute inter
 iOS users can still use the web page to play the call: pressing play on the audio controls at the bottom of the form 
 will play a 20 second clip of COHA call.
 
+# Useful Tips for Survey Participants
+## Use the map to find the correct station
+Once you select the quadrat, the map at the bottom of the page displays an approximate location of all stations in 
+the quadrat.  For most quadrats, the station location displayed is from the original 2016 survey package.  
+For a few quadrats, the station locations were taken from more recent surveys.
+
+When you select a station, the map updates to show a 400m radius circle centred on your current position.
+You can also see the nominal location of nearby stations.  An message box appears if your current position is more than 
+400m from the nominal location of the station you selected.  You should look at the map to make sure the web
+broswer reported your current location correctly.  If it did, you probably want to select a station that's within
+400m of your location.  If the map does NOT show your location correctly, please use some other method to get your
+latitude and longitude and enter the correct values into the form.
+
+Here's a screenshot of the map showing a current location as a blue circle, with yellow circles marking the
+nominal station locations.  In this example, the participant should probably choose station 3 for this observation
+(and consider whether to move closer to the nominal station location before taking their observation).
+
+NOTE: *the current location does NOT update in real time.  It only updates when you change the station selection.
+e.g. if you move after selecting your desired station, you will need to temporarily select a different station,
+then select the correct station again to update your location.*
+
+![map showing current location and nearby stations](static/map_demo.jpg)
+
 # Website Endpoints
 
 ## [coha.pacificloon.ca/](https://coha.pacificloon.ca)
