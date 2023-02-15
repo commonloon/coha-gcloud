@@ -7,7 +7,9 @@ label, button {
   font-weight: bold;
 }
 button {
-  border-radius: 15px;
+  border-radius: 20px;
+  background-color: #E3B448;
+  opacity: 0.9;
 }
 
 html {
@@ -55,6 +57,10 @@ form {
   opacity: 0.9;
 }
 
+input[email] {
+  border-radius: 5px;
+}
+
 label {
   width: 100%;
   padding: 10px;
@@ -62,7 +68,7 @@ label {
 select {
   width: 100%;
   padding:10px;
-  border-radius:5px;
+  border-radius:10px;
   margin-top: 5px;
   margin-bottom: 10px;
 }
@@ -81,6 +87,7 @@ label{
 textarea {
   margin-top: 10px;
   margin-bottom: 10px;
+  border-radius: 5px;
 }
 
 .input:focus ~ .cut,
@@ -126,17 +133,22 @@ textarea {
   background-color: #281f18;
   margin-top: 0.5em;
   margin-bottom: 0.5em;
+  border-radius: 10px;
 }
 
 #message {
   margin-left:30px;
   margin-right: 30px;
   background-color: #281f18;
+  opacity: 0.8;
   margin-top: 0px;
+  border-radius: 10px;
+  padding: 1em;
 }
 
 #map {
   height: 400px; /* The height is 400 pixels */
   width: 100%; /* The width is the width of the web page */
   margin-top: 20px;
+  border-radius: 10px;
 }
