@@ -16,6 +16,8 @@ var surveyBounds = {
     east: -122.937837
 };
 
+// We need to keep a record of google maps markers so we can erase them
+var mapMarkers = [];
 
 // initialize the quadrat boundaries if quadrat is set by cookie
 window.onload = () => {
@@ -99,6 +101,39 @@ function emailChanged() {
         alert('Invalid email address');
     }
 }
+
+// put an individual station marker on the map
+function stationMarker(row, station) {
+    const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};
+    const marker = new google.maps.Marker({
+        position: pos,
+        map: map,
+        title: quadrat + ":" + station.toString(),
+        label: station.toString()
+    });
+    mapMarkers.push(marker);
+    const c = new google.maps.Circle({
+      strokeColor: "#FF0000",
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: "#FFFF00",
+      fillOpacity: 0.35,
+      map,
+      center: pos,
+      radius: 250,
+    });
+    mapMarkers.push(c);
+}
+
+// mark all stations of a quadrat on the map
+function mapStations(quadrat) {
+    let coords = stationCoordinates[quadrat];
+    let station=1;
+    for(; station < 17; ++station) {
+        stationMarker(coords[station], station);;
+    }
+}
+
 function isValidQuadrat(quadrat) {
     return quadrats.indexOf(quadrat) != -1;
 }
@@ -109,10 +144,55 @@ function quadratChanged() {
     if (quadratSet) {
         // Save the quadrat as a browser cookie so the user doesn't have to constantly re-enter it
         document.cookie = 'quadrat='+quadrat;
+        // erase existing map markers
+        mapMarkers.forEach((marker) => {
+            marker.setMap(null);
+        });
+        mapMarkers = [];
+        // show this quadrat's stations on the map
+        mapStations(quadrat);
     } else {
         document.cookie = 'quadrat=Choose';
     }
 
+}
+
+function mapMarker(latitude, longitude, label) {
+    const pos = {lat: parseFloat(latitude), lng: parseFloat(longitude)};
+    const image = {
+        url: "https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png",
+        // This marker is 20 pixels wide by 32 pixels high.
+        size: new google.maps.Size(20, 32),
+        // The origin for this image is (0, 0).
+        origin: new google.maps.Point(0, 0),
+        // The anchor for this image is the base of the flagpole at (0, 32).
+        anchor: new google.maps.Point(0, 32),
+    };
+    // Shapes define the clickable region of the icon. The type defines an HTML
+    // <area> element 'poly' which traces out a polygon as a series of X,Y points.
+    // The final coordinate closes the poly by connecting to the first coordinate.
+    const shape = {
+        coords: [1, 1, 1, 20, 18, 20, 18, 1],
+        type: "poly",
+    };
+    const marker = new google.maps.Marker({
+        position: pos,
+        map: map,
+        title: label,
+        label: "YOU"
+    });
+    mapMarkers.push(marker)
+    const c = new google.maps.Circle({
+      strokeColor: "#0000FF",
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: "#00FFFF",
+      fillOpacity: 0.35,
+      map,
+      center: pos,
+      radius: 400,
+    });
+    mapMarkers.push(c);
 }
 
 function distanceFromStation(quadrat, station, lat, long, nominalLocation) {
@@ -156,6 +236,13 @@ function stationChanged() {
                 console.log("Longitude is :", position.coords.longitude);
                 let lt = position.coords.latitude;
                 let lo = position.coords.longitude;
+
+                // map the current location
+                mapMarker(lt, lo, "Current Position")
+
+                // center the map on our current location and zoom appropriately
+                map.setCenter({lat: lt, lng: lo});
+                map.setZoom(14);
 
                 // update the position regardless, but warn the user if they're far from the station
                 let d = getDistanceFromLatLonInKm(nominalLocation.latitude, nominalLocation.longitude, lt, lo);
@@ -393,3 +480,57 @@ function startSurvey() {
 
     timer = startTimer(timeout, "timer", firstCall); // should be 120 seconds, fix if shorter
 }
+
+
+///////////
+// Map
+///////////
+let map;
+
+function initMap() {
+  let lat = 49.2366675;
+  let lng = -123.0478035;
+  map = new google.maps.Map(document.getElementById("map"), {
+    center: { lat: lat, lng: lng },
+    zoom: 12,
+  });
+  /*
+  let i=0;
+  for (; i < data.length; ++i) {
+    let row = data[i];
+    const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};
+    new google.maps.Marker({
+      position: pos,
+      map: map,
+      title: row.quadrat + ":" + row.station
+    });
+    if (row.detection === "yes") {
+      let distance = parseFloat(row.distance);
+      let bearing = parseInt(row.direction);
+      if (!isNaN(distance) && ! isNaN(bearing)) {
+        distance /= 1000;  // convert m to km
+        terminus = llFromDistance(pos.lat, pos.lng, distance, bearing);
+        let path = [
+          {lat: pos.lat, lng: pos.lng},
+          {lat: terminus[0], lng: terminus[1]}
+        ];
+        const stroke = new google.maps.Polyline({
+          path: path,
+          geodesic: true,
+          strokeColor: "#8800ff",
+          strokeOpacity: 1.0,
+          strokeWeight: 8,
+        });
+        stroke.setMap(map);
+      }
+    }
+  }
+
+   */
+}
+
+window.initMap = initMap;
+
+
+
+
