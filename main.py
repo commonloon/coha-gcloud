@@ -8,6 +8,8 @@ from google.cloud import storage
 
 from flask import Flask
 from flask import render_template, request
+from flaskext.markdown import Markdown
+
 
 STORAGE_BUCKET_NAME= "coha-data"
 STORAGE_BUCKET_PUBLIC_URL = "https://storage.googleapis.com/" + STORAGE_BUCKET_NAME
@@ -24,6 +26,7 @@ SUMMARY_FILE_NAME = "COHA-data-all-years.csv"
 SUMMARY_FILE_PUBLIC_URL = STORAGE_BUCKET_PUBLIC_URL + "/" + SUMMARY_FILE_NAME
 
 app = Flask(__name__, template_folder="templates")
+Markdown(app)
 
 unselected: str = "not selected"
 quadrats = list(string.ascii_uppercase)[:24]   # 24 Quadrats named A-X
@@ -282,6 +285,16 @@ def csv_data():
                            all_years=SUMMARY_FILE_PUBLIC_URL,
                            years=years,
                            yearly_summaries=yearly_summaries)
+
+
+@app.route('/help/')
+def show_readme():
+    """
+    Return all the data as a csv file
+    """
+    with open("README.md", "r") as f:
+        mkd_text = f.read();
+    return render_template('help.html', mkd_text=mkd_text)
 
 
 if __name__ == '__main__':

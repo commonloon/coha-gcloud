@@ -60,6 +60,10 @@ iOS users can still use the web page to play the call: pressing play on the audi
 will play a 20 second clip of COHA call.
 
 # Useful Tips for Survey Participants
+## Report Problems in github
+Please report any problems or feature requests in the 
+[github issue tracker](https://github.com/commonloon/coha-gcloud/issues)
+
 ## Use the map to find the correct station
 Once you select the quadrat, the map at the bottom of the page displays an approximate location of all stations in 
 the quadrat.  For most quadrats, the station location displayed is from the original 2016 survey package.  
