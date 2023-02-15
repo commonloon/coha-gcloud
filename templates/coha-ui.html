@@ -136,9 +136,15 @@
 
     </form>
     <div id="footer">
-        <button name="startButton" id="startButton" type="button" onclick="startSurvey()" disabled>Start Survey</button>
-        <p id="timer">00:00</p>
         <p id="message">{{ message }}</p>
+        {% if iphone %}
+            <button name="fortySecondTimer" id="fortySecondTimer" type="button" onclick="fortySecondTimer()">40 second timer</button>
+            <button name="twoMinuteTimer" id="twoMinuteTimer" type="button" onclick="twoMinuteTimer()">2 minute timer</button>
+            <button name="clearTimer" id="clearTimer" type="button" onclick="clearTimer()">Stop timer</button>
+        {% else %}
+        <button name="startButton" id="startButton" type="button" onclick="startSurvey()" disabled>Start Survey</button>
+        {% endif %}
+        <p id="timer">00:00</p>
         <audio
             id="player"
             controls

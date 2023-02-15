@@ -152,13 +152,19 @@ def getCookieData():
     quadrat = quadrat if quadrat in quadrats else defaultQuadrat
     return (email, quadrat)
 
+def isIphone():
+    """
+    look for iPhone in the user-agent field of the HTTP request
+    """
+    agent = str(request.headers.get("user-agent"))
+    return re.search('iPhone', agent) is not None
+
 @app.route('/')
 def collect_data():  # put application's code here
     (email, quadrat) = getCookieData()
     # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
     # Figure out the platform from the user-agent header.
-    agent = str(request.headers.get("user-agent"))
-    iphone = re.search('iPhone', agent) is not None
+    iphone = isIphone()
 
     msg = "Select Station and conditions before starting the survey."
     return render_template('coha-ui.html',
@@ -219,8 +225,7 @@ def save_data():
 
     # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
     # Figure out the platform from the user-agent header.
-    agent = str(request.headers.get("user-agent"))
-    iphone = re.search('iPhone', agent) is not None
+    iphone = isIphone()
 
     msg = csvWriteToGoogleCloud(filename, csvColumns, [fields])
     return render_template('coha-ui.html',

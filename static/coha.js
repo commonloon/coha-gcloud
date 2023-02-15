@@ -224,8 +224,9 @@ function formChanged() {
                 document.getElementById("detection").disabled = false;
 
                 if (windSet && cloudSet && noiseSet) {
-                    // enable the start button
-                    document.getElementById("startButton").disabled = false;
+                    // enable the start button, if it exists (i.e. not an iPhone)
+                    let startButton = document.getElementById("startButton");
+                    if (startButton) startButton.disabled = false;
 
                     if (cohaDetected) {
                         // if we detected a COHA, then we want to know where
@@ -249,9 +250,40 @@ function formChanged() {
     }
 }
 
-function startTimer(seconds, container, oncomplete) {
-    var startTime, timer, obj, ms = seconds*1000,
+function enableTimerButtons(enable=true) {
+    let fortySecondButton = document.getElementById("fortySecondTimer");
+    let twoMinuteButton = document.getElementById("twoMinuteTimer");
+    fortySecondButton.disabled = !enable;
+    twoMinuteButton.disabled = !enable;
+}
+
+function fortySecondTimer() {
+    // we call clearTimer() to re-enable the buttons when the countdown completes
+    timer = startTimer(40, "timer", clearTimer);
+    // we have to disable the start buttons during countdown, because we're using a global variable
+    // to access our timer and we don't want to replace it until the countdown is finished
+    enableTimerButtons(false);  // disable buttons during countdown
+}
+
+function twoMinuteTimer() {
+    // we call clearTimer() to re-enable the buttons when the countdown completes
+    timer = startTimer(120, "timer", clearTimer);
+    // we have to disable the start buttons during countdown, because we're using a global variable
+    // to access our timer and we don't want to replace it until the countdown is finished
+    enableTimerButtons(false);  // disable buttons during countdown
+}
+
+function clearTimer() {
+    timer.pause();
+    container = document.getElementById("timer");
+    container.innerHTML = "00:00";
+    enableTimerButtons(true);
+}
+
+function startTimer(seconds, container, oncomplete=null) {
+    let startTime, timer, obj, ms = seconds*1000,
         display = document.getElementById(container);
+    let completed = false;
     obj = {};
     obj.resume = function() {
         startTime = new Date().getTime();
@@ -270,7 +302,10 @@ function startTimer(seconds, container, oncomplete) {
         if( now === 0) {
             clearInterval(timer);
             obj.resume = function() {};
-            if( oncomplete) oncomplete();
+            if( !completed && oncomplete != null ) {
+                completed = true;
+                oncomplete();
+            }
         }
         return now;
     };
@@ -330,7 +365,6 @@ function surveyFinished() {
     let messageField = document.getElementById("message")
     messageField.textContent =
         "Survey complete.  Record whether COHA was detected, then press \"Save Observation\" to save results.";
-    timer = startTimer(180, "timer", surveyFinished);
 }
 
 function stopSurvey() {
