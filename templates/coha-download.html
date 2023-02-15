@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>COHA Survey Data Download</title>
+    <style>
+        html {
+          background: url('/static/COHA.jpg') no-repeat center top fixed;
+          -webkit-background-size: cover;
+          -moz-background-size: cover;
+          -o-background-size: cover;
+          background-size: cover;
+        }
+        html, body {
+          margin: 0;
+          padding: 0;
+          height: 100%;
+        }
+
+        body {
+          display: flex; /* or css grid for more intricate layouts */
+          flex-direction: column;
+        }
+        h1 {
+            color: #E3B448;
+            background: #281f18;
+            opacity: 0.7;
+        }
+        .button {
+            display: block;
+            width: 500px;
+            height: 25px;
+            color: #E3B448;
+            background: #281f18;
+            opacity: 0.7;
+            padding: 10px;
+            text-align: center;
+            border-radius: 5px;
+            font-weight: bold;
+            line-height: 25px;
+            margin-top: 15px;
+            margin-bottom:15px;
+        }
+    </style>
+</head>
+<body>
+<H1>Click link below to download data as a CSV file.</H1>
+<a class="button" href="{{ all_years }}">All data From 2023 to the present</a>
+<hr>
+{% for year in years %}
+<a class="button" href="{{ yearly_summaries[year] }}">{{ year }} summary</a>
+{% endfor %}
+</body>
+</html>
