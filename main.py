@@ -4,12 +4,14 @@ import datetime
 import pytz
 import csv
 import html
+import os
 from google.cloud import storage
 
 from flask import Flask
-from flask import render_template, request, send_from_directory
+from flask import render_template, request
 from flaskext.markdown import Markdown
 
+MAPS_API_KEY = os.environ.get("COHA_MAPS_API_KEY")
 
 STORAGE_BUCKET_NAME= "coha-data"
 STORAGE_BUCKET_PUBLIC_URL = "https://storage.googleapis.com/" + STORAGE_BUCKET_NAME
@@ -140,7 +142,7 @@ def loadStationCoords():
 
 
 def isValidEmailFormat(s):
-    s = s.strip();
+    s = s.strip()
     pat = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}$'
     return re.match(pat, s) is not None
 
@@ -172,7 +174,8 @@ def collect_data():  # put application's code here
     msg = "Select Station and conditions before starting the survey."
     return render_template('coha-ui.html',
                            email=email, quadrat=quadrat, message=msg, iphone=iphone,
-                           quadrats=quadrats, stations=stations, coords=loadStationCoords())
+                           quadrats=quadrats, stations=stations, coords=loadStationCoords(),
+                           maps_api_key=MAPS_API_KEY)
 
 
 @app.route('/save/', methods=['GET', 'POST'])
@@ -233,7 +236,8 @@ def save_data():
     msg = csvWriteToGoogleCloud(filename, csvColumns, [fields])
     return render_template('coha-ui.html',
                            email=email, quadrat=quadrat, message=msg, iphone=iphone,
-                           quadrats=quadrats, stations=stations, coords=loadStationCoords())
+                           quadrats=quadrats, stations=stations, coords=loadStationCoords(),
+                           maps_api_key=MAPS_API_KEY)
 
 
 @app.route('/map/')
@@ -248,7 +252,7 @@ def show_map():
     data = getData(year)
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
-    return render_template('coha-map.html', data=data, year=year)
+    return render_template('coha-map.html', data=data, year=year, maps_api_key=MAPS_API_KEY)
 
 @app.route('/data/')
 def csv_data():
@@ -300,7 +304,7 @@ def show_readme():
     # and we don't want to maintain two copies.  I could try adding a symlink in my local workspace, but
     # that would have to be repeated whenever the repo is cloned to a new machine and won't work on Windows.
     with open("static/README.md", "r") as f:
-        mkd_text = f.read();
+        mkd_text = f.read()
     return render_template('help.html', mkd_text=mkd_text)
 
 if __name__ == '__main__':
