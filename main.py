@@ -7,7 +7,7 @@ import html
 from google.cloud import storage
 
 from flask import Flask
-from flask import render_template, request
+from flask import render_template, request, send_from_directory
 from flaskext.markdown import Markdown
 
 
@@ -25,7 +25,7 @@ FILE_FIELD_NAMES.append("timestamp")
 SUMMARY_FILE_NAME = "COHA-data-all-years.csv"
 SUMMARY_FILE_PUBLIC_URL = STORAGE_BUCKET_PUBLIC_URL + "/" + SUMMARY_FILE_NAME
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder="templates", static_folder='static', static_url_path='')
 Markdown(app)
 
 unselected: str = "not selected"
@@ -126,7 +126,7 @@ def loadStationCoords():
     Load prior station coordinates so we can sanity check the new station location
     """
     coords = {}
-    with open("static/COHA-Station-Coordinates-v1.csv", "r") as f:
+    with open("/COHA-Station-Coordinates-v1.csv", "r") as f:
         reader = csv.DictReader(f)
         for row in reader:
             (quadrat, station, latitude, longitude, year) = \
@@ -295,7 +295,6 @@ def show_readme():
     with open("README.md", "r") as f:
         mkd_text = f.read();
     return render_template('help.html', mkd_text=mkd_text)
-
 
 if __name__ == '__main__':
     app.run()
