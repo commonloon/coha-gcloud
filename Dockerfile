@@ -9,6 +9,7 @@ ENV PYTHONUNBUFFERED True
 ENV APP_HOME /app
 WORKDIR $APP_HOME
 COPY . ./
+COPY ./README.md ./static/README.md
 
 # Install production dependencies.
 RUN pip install --no-cache-dir -r requirements.txt

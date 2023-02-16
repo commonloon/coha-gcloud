@@ -7,7 +7,9 @@ import html
 from google.cloud import storage
 
 from flask import Flask
-from flask import render_template, request
+from flask import render_template, request, send_from_directory
+from flaskext.markdown import Markdown
+
 
 STORAGE_BUCKET_NAME= "coha-data"
 STORAGE_BUCKET_PUBLIC_URL = "https://storage.googleapis.com/" + STORAGE_BUCKET_NAME
@@ -23,7 +25,8 @@ FILE_FIELD_NAMES.append("timestamp")
 SUMMARY_FILE_NAME = "COHA-data-all-years.csv"
 SUMMARY_FILE_PUBLIC_URL = STORAGE_BUCKET_PUBLIC_URL + "/" + SUMMARY_FILE_NAME
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__, template_folder="templates", static_folder='static', static_url_path='')
+Markdown(app)
 
 unselected: str = "not selected"
 quadrats = list(string.ascii_uppercase)[:24]   # 24 Quadrats named A-X
@@ -283,6 +286,22 @@ def csv_data():
                            years=years,
                            yearly_summaries=yearly_summaries)
 
+
+@app.route('/help/')
+def show_readme():
+    """
+    Serve the README.md file as HTML.
+
+    NOTE: this  endpoint only works when deployed, not on the local test server
+    TODO: make this work on the local test server.
+    """
+    # Dockerfile copies README.md into the correct location on deployment.
+    # This is awkward, but we need the README.md file to be in the root directory for github
+    # and we don't want to maintain two copies.  I could try adding a symlink in my local workspace, but
+    # that would have to be repeated whenever the repo is cloned to a new machine and won't work on Windows.
+    with open("static/README.md", "r") as f:
+        mkd_text = f.read();
+    return render_template('help.html', mkd_text=mkd_text)
 
 if __name__ == '__main__':
     app.run()

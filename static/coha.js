@@ -56,7 +56,7 @@ function deg2rad(deg) {
 function initAudio() {
     // load the audio into cohaBuffer
     let request = new XMLHttpRequest();
-    request.open('GET', "/static/COHA.mp3", true);
+    request.open('GET', "/COHA.mp3", true);
     request.responseType = 'arraybuffer';
 
     // Decode asynchronously
@@ -103,12 +103,13 @@ function emailChanged() {
 }
 
 // put an individual station marker on the map
-function stationMarker(row, station) {
+function stationMarker(row, station, quadrat) {
     const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};
+    const title = quadrat + ":" + station.toString();
     const marker = new google.maps.Marker({
         position: pos,
         map: map,
-        title: quadrat + ":" + station.toString(),
+        title: title,
         label: station.toString()
     });
     mapMarkers.push(marker);
@@ -130,7 +131,7 @@ function mapStations(quadrat) {
     let coords = stationCoordinates[quadrat];
     let station=1;
     for(; station < 17; ++station) {
-        stationMarker(coords[station], station);;
+        stationMarker(coords[station], station, quadrat);;
     }
 }
 
