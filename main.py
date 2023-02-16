@@ -290,8 +290,15 @@ def csv_data():
 @app.route('/help/')
 def show_readme():
     """
-    Return all the data as a csv file
+    Serve the README.md file as HTML.
+
+    NOTE: this  endpoint only works when deployed, not on the local test server
+    TODO: make this work on the local test server.
     """
+    # Dockerfile copies README.md into the correct location on deployment.
+    # This is awkward, but we need the README.md file to be in the root directory for github
+    # and we don't want to maintain two copies.  I could try adding a symlink in my local workspace, but
+    # that would have to be repeated whenever the repo is cloned to a new machine and won't work on Windows.
     with open("static/README.md", "r") as f:
         mkd_text = f.read();
     return render_template('help.html', mkd_text=mkd_text)

@@ -37,28 +37,29 @@ the coha.pacificloon.ca website is intended to replace.
 1. Make sure location services are enabled for your phone.
 2. Travel to the station where you will take your first observation
 3. Enter your email address in the first field.
-   1. The email address will be saved in your browser, so you should only have to do this the first time you use the website
+   - The email address will be saved in your browser, so you should only have to do this the first time you use the website
 4. Select the survey quadrat
-   1. the quadrat will also be saved in your browser.  You will only need to change it if you survey more than one quadrat.
+   - the quadrat will also be saved in your browser.  You will only need to change it if you survey more than one quadrat.
 5. Select the station (1-16)
-   1. other fields will be disabled until the station is selected
+   - other fields will be disabled until the station is selected
 6. Select appropriate values for cloud cover, wind speed and noise at this station 
-   1. the browser will automatically fill in your current location (latituded and longitude) once you have entered values for all three conditions
+   - the browser will automatically fill in your current location (latituded and longitude) once you have entered values for all three conditions
 7. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
    1. the "Start Survey" button automates the audio part of the survey protocol
       1. pushing the button starts a two minute timer.  
          1. Use this time to look for hawks in the area
          2. if you see a COHA, press the button again to stop the audio playback
       2. after two minutes, the web app will play a recorded COHA call for 20 seconds, then pause for 40 seconds
-         1. if you see or hear a COHA, press "Stop Survey" to stop the audio playback
+         - if you see or hear a COHA, press "Stop Survey" to stop the audio playback
       3. the app repeats the call playback/pause three times
       4. the final timer counts down an additional two minutes, during which time you should continue to look and listen for COHAs
    2. When you have finished your observation at this station (at the end of the protocol or immediately on detecting a COHA), use the "Was COHA detected" dropdown to record whether you observed a COHA.
-      1. if a COHA was detected, use the next two fields to indicate its direction (0-360 degrees from North) and distance in metres from your location.
+      - if a COHA was detected, use the next two fields to indicate its direction (0-360 degrees from North) and distance in metres from your location.
    3. Optionally add notes to the notes field
    4. Press the "Save Observation" button to save your observation.
-      1. NOTE: your data will be lost if you don't do this step!
-8. Go to the next station and repeat steps 3-7 until you have surveyed the entire quadrat
+      - **NOTE: your data will be lost if you don't press "Save Observation"!**
+8. Go to the next station and repeat steps 5-7 until you have surveyed the entire quadrat
+   - **NOTE: the location is set when you select the station, so don't select the station until you have arrived in the location where you plan to observe.
 
 ## iPhone Users
 
