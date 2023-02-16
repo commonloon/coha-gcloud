@@ -59,7 +59,7 @@ the coha.pacificloon.ca website is intended to replace.
    4. Press the "Save Observation" button to save your observation.
       - **NOTE: your data will be lost if you don't press "Save Observation"!**
 8. Go to the next station and repeat steps 5-7 until you have surveyed the entire quadrat
-   - **NOTE: the location is set when you select the station, so don't select the station until you have arrived in the location where you plan to observe.
+   - **NOTE: the location is set when you select the station**, so don't select the station until you have arrived in the location where you plan to observe.
 
 ## iPhone Users
 
