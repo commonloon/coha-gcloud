@@ -126,7 +126,7 @@ def loadStationCoords():
     Load prior station coordinates so we can sanity check the new station location
     """
     coords = {}
-    with open("/COHA-Station-Coordinates-v1.csv", "r") as f:
+    with open("static/COHA-Station-Coordinates-v1.csv", "r") as f:
         reader = csv.DictReader(f)
         for row in reader:
             (quadrat, station, latitude, longitude, year) = \
@@ -292,7 +292,7 @@ def show_readme():
     """
     Return all the data as a csv file
     """
-    with open("README.md", "r") as f:
+    with open("static/README.md", "r") as f:
         mkd_text = f.read();
     return render_template('help.html', mkd_text=mkd_text)
 
