@@ -13,16 +13,17 @@ from flaskext.markdown import Markdown
 
 MAPS_API_KEY = os.environ.get("COHA_MAPS_API_KEY")
 
-STORAGE_BUCKET_NAME= "coha-data"
+STORAGE_BUCKET_NAME = "coha-data"
 STORAGE_BUCKET_PUBLIC_URL = "https://storage.googleapis.com/" + STORAGE_BUCKET_NAME
 FORM_FIELD_NAMES = [
     "quadrat", "station",
     "cloud", "wind", "noise", "latitude", "longitude",
-    "detection", "direction", "distance",
-    "email", "notes"
+    "detection", "direction", "distance", "detection_type", "age_class",
+    "observers", "notes"
 ]
 FILE_FIELD_NAMES = FORM_FIELD_NAMES.copy()
 FILE_FIELD_NAMES.append("timestamp")
+OPTIONAL_FIELDS = ["direction", "distance", "detection_type", "age_class"]
 
 SUMMARY_FILE_NAME = "COHA-data-all-years.csv"
 SUMMARY_FILE_PUBLIC_URL = STORAGE_BUCKET_PUBLIC_URL + "/" + SUMMARY_FILE_NAME
@@ -31,18 +32,18 @@ app = Flask(__name__, template_folder="templates", static_folder='static', stati
 Markdown(app)
 
 unselected: str = "not selected"
-quadrats = list(string.ascii_uppercase)[:24]   # 24 Quadrats named A-X
-stations = [str(i) for i in range(1, 17, 1)]   # 16 stations in each quadrat, numbered 1-16
-cloudValues = [str(i) for i in range(0, 5, 1)] # valid values are 0-4
-windValues  = [str(i) for i in range(0, 5, 1)] # valid values are 0-4
-noiseValues = [str(i) for i in range(0, 4, 1)] # valid values are 0-3
+quadrats = list(string.ascii_uppercase)[:24]    # 24 Quadrats named A-X
+stations = [str(i) for i in range(1, 17, 1)]    # 16 stations in each quadrat, numbered 1-16
+cloudValues = [str(i) for i in range(0, 5, 1)]  # valid values are 0-4
+windValues  = [str(i) for i in range(0, 5, 1)]  # valid values are 0-4
+noiseValues = [str(i) for i in range(0, 4, 1)]  # valid values are 0-3
 quadrats.insert(0, unselected)
 stations.insert(0, unselected)
 
 
-def csvWriteToGoogleCloud(filename, columns, data):
+def csv_write_to_google_cloud(filename, columns, data):
     """
-    Write a CSV file from an array of dicts (each array element is a dict with the relevant columnts)
+    Write a CSV file from an array of dicts (each array element is a dict with the relevant columns)
     columns: list of column names in the order you would like them written
     data: array of dicts to write
     """
@@ -77,6 +78,7 @@ def csvWriteToGoogleCloud(filename, columns, data):
 
     return msg
 
+
 def getData(year=None):
     """
     Read all the data files for the specified year and return an array of dicts whose keys are the field names
@@ -89,7 +91,7 @@ def getData(year=None):
     bucket = storage_client.get_bucket(bucket_name)
 
     if bucket is None:
-        #TODO: display error page on failure
+        # TODO: display error page on failure
         return "Failed to open data bucket " + STORAGE_BUCKET_NAME + ", sorry"
 
     # check all blobs in the bucket, adding those from this year to the list
@@ -122,8 +124,7 @@ def getData(year=None):
     return data
 
 
-
-def loadStationCoords():
+def load_station_coords():
     """
     Load prior station coordinates so we can sanity check the new station location
     """
@@ -141,21 +142,28 @@ def loadStationCoords():
     return coords
 
 
-def isValidEmailFormat(s):
-    s = s.strip()
-    pat = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,7}$'
-    return re.match(pat, s) is not None
+def sanitize_text_input(untrusted, max_len=100):
+    """
+    This function attempts to render text input harmless by doing the following:
+    - strip characters other than letters and harmless punctuation
+    - limiting the string length
+    """
+    pattern = "[^A-Za-z.,:; ']"
+    sanitized = re.sub(pattern, "", untrusted)
+    sanitized = sanitized[:max_len] if len(sanitized) > max_len else sanitized
+    return sanitized
+
 
 def getCookieData():
-    defaultEmail = ""
+    defaultObservers = ""
     defaultQuadrat = "Choose"
-    email = request.cookies.get('email')
+    observers = request.cookies.get('observers')
     quadrat = request.cookies.get('quadrat')
-    email = "" if email is None else email
-    email = email if isValidEmailFormat(email) else defaultEmail
+    observers = "" if observers is None else observers
+    observers = sanitize_text_input(observers)
     quadrat = "Choose" if quadrat is None else quadrat
     quadrat = quadrat if quadrat in quadrats else defaultQuadrat
-    return (email, quadrat)
+    return observers, quadrat
 
 def isIphone():
     """
@@ -166,15 +174,15 @@ def isIphone():
 
 @app.route('/')
 def collect_data():  # put application's code here
-    (email, quadrat) = getCookieData()
+    (observers, quadrat) = getCookieData()
     # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
     # Figure out the platform from the user-agent header.
     iphone = isIphone()
 
     msg = "Select Station and conditions before starting the survey."
     return render_template('coha-ui.html',
-                           email=email, quadrat=quadrat, message=msg, iphone=iphone,
-                           quadrats=quadrats, stations=stations, coords=loadStationCoords(),
+                           observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
+                           quadrats=quadrats, stations=stations, coords=load_station_coords(),
                            maps_api_key=MAPS_API_KEY)
 
 
@@ -186,8 +194,8 @@ def save_data():
     '''
     timestamp = datetime.datetime.now(tz=pytz.timezone("Canada/Pacific")).strftime("%Y-%m-%d.%H-%M-%S")
     form = request.form
-    # Get the email address and quadrat from a cookie, if available
-    (email, quadrat) = getCookieData()
+    # Get the observers address and quadrat from a cookie, if available
+    (observers, quadrat) = getCookieData()
 
     # get the form data
     fieldNames = FORM_FIELD_NAMES
@@ -200,12 +208,12 @@ def save_data():
             msg += " " + field + "=\"" + str(fields[field])
         except Exception as e:
             fields[field] = ""
-            msg += " Missing value for field:" + field
-            pass
+            if field not in OPTIONAL_FIELDS:
+                msg += " Missing value for field:" + field
 
     # sanitize the data, so the site is harder to exploit by bad actors
     bad = "bad value"
-    fields["email"] = fields["email"][:40] if isValidEmailFormat(fields["email"]) else html.escape(fields["email"])[:20]
+    fields["observers"] = sanitize_text_input(fields["observers"])
     fields["quadrat"] = fields["quadrat"] if fields["quadrat"] in quadrats else bad
     fields["station"] = fields["station"] if fields["station"] in stations  else bad
     fields["cloud"] = fields["cloud"] if fields["cloud"] in cloudValues else bad
@@ -225,6 +233,8 @@ def save_data():
         fields["distance"] = str(int(fields["distance"]))[:4]
     else:
         fields["distance"] = ""
+    fields["detection_type"] = fields["detection_type"] if fields["detection_type"] in ["A", "V"] else ""
+    fields["age_class"] = fields["age_class"] if fields["age_class"] in ["unknown", "juvenile", "adult"] else ""
 
     # save the data file
     filename = "{}.{:02d}.{}.csv".format(fields['quadrat'], int(fields['station']), timestamp)
@@ -233,10 +243,10 @@ def save_data():
     # Figure out the platform from the user-agent header.
     iphone = isIphone()
 
-    msg = csvWriteToGoogleCloud(filename, csvColumns, [fields])
+    msg = csv_write_to_google_cloud(filename, csvColumns, [fields])
     return render_template('coha-ui.html',
-                           email=email, quadrat=quadrat, message=msg, iphone=iphone,
-                           quadrats=quadrats, stations=stations, coords=loadStationCoords(),
+                           observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
+                           quadrats=quadrats, stations=stations, coords=load_station_coords(),
                            maps_api_key=MAPS_API_KEY)
 
 
@@ -272,7 +282,7 @@ def csv_data():
             yearly_data[year] = [data[i]]
 
     # create the summary data file
-    csvWriteToGoogleCloud(SUMMARY_FILE_NAME, FILE_FIELD_NAMES, data)
+    csv_write_to_google_cloud(SUMMARY_FILE_NAME, FILE_FIELD_NAMES, data)
 
     # now write summary files for all years
     #TODO: this is inefficient.  Eventually we will be in a state where data from prior years doesn't change.
@@ -282,7 +292,7 @@ def csv_data():
     for year in yearly_data.keys():
         year_file_name = "COHA-data-" + str(year) + ".csv"
         yearly_summaries[year] = STORAGE_BUCKET_PUBLIC_URL + "/" + year_file_name
-        csvWriteToGoogleCloud(year_file_name, FILE_FIELD_NAMES, yearly_data[year])
+        csv_write_to_google_cloud(year_file_name, FILE_FIELD_NAMES, yearly_data[year])
 
     # return a redirect to the google cloud storage URL
     return render_template("coha-download.html",
@@ -306,6 +316,7 @@ def show_readme():
     with open("static/README.md", "r") as f:
         mkd_text = f.read()
     return render_template('help.html', mkd_text=mkd_text)
+
 
 if __name__ == '__main__':
     app.run()

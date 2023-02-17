@@ -14,8 +14,9 @@ The first letter of the filename indicates the survey quadrat, the next two digi
 folloed by the observation date and time in YYYY-MM-DD.HH-MM-SS format.
 
 The content of the CSV file looks like this:
-   quadrat,station,cloud,wind,noise,latitude,longitude,detection,direction,distance,email,notes,timestamp
-   G,5,4,1,1,49.2476815,-123.0678571,no,,,debug@pacificloon.ca,"This is a test, not a real observation.",2023-02-10.00-19-59
+
+      quadrat,station,cloud,wind,noise,latitude,longitude,detection,direction,distance,detection_type,age_class,observers,notes,timestamp
+      S,6,4,2,2,49.2574664,-123.0419607,yes,66,100,V,juvenile,"Harvey Dueck, Michelle Baudais",Not a real observation: created for testing,2023-02-16.16-45-07
 
 
 # Instructions for Survey Participants
@@ -126,13 +127,24 @@ It is just a demonstration of the kind of thing we can do if the data is online 
 This endpoint updates the summary data files for each year and all time (since the app was developed 
 in 2023).  It then displays a page with links to download the data files in CSV format.
 
-The format looks like this (these are NOT real data: they were created for testing):
+The format looks like this (using uploaded 2022 data for quadrat E):
 
-      quadrat,station,cloud,wind,noise,latitude,longitude,detection,direction,distance,email,notes,timestamp
-      D,3,1,1,3,49.2466815,-123.0578571,yes,,1,debug@pacificloon.ca,,2023-02-14.08-26-23
-      D,3,3,2,3,49.2466815,-123.0578571,yes,300,250,debug@pacificloon.ca,,2023-02-14.08-29-58
-      D,3,2,3,2,49.2466815,-123.0578571,yes,44,50,debug@pacificloon.ca,,2023-02-14.14-49-11
-      F,8,0,1,1,49.2542552,-123.0484187,no,,,debug@pacificloon.ca,,2023-02-10.04-57-15
-      G,3,3,1,1,49.2466815,-123.0578571,no,,,debug@pacificloon.ca,,2023-02-10.04-54-19
-      G,4,0,1,1,49.2466815,-123.0578571,no,,,debug@pacificloon.ca,,2023-02-10.03-29-25
-      G,5,4,1,1,49.2466815,-123.0578571,no,,,debug@pacificloon.ca,"This is a test, not a real observation.",2023-02-10.00-19-59
+      quadrat,station,cloud,wind,noise,latitude,longitude,detection,direction,distance,detection_type,age_class,observers,notes,timestamp
+      E,1,3,0,1,49.247804,-123.043471,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.08-43-00
+      E,2,3,2,1-2,49.247854,-123.03717,N,225,,,,Michelle Baudais Harvey Dueck,"maybe heard faint call in the distance, but might have been a flicker.  Call seemed slower.",2022-04-02.09-04-00
+      E,3,3,3->1,1,49.247973,-123.03104,N,,,,,Michelle Baudais Harvey Dueck,"started breezy, then calmed down",2022-04-02.09-28-00
+      E,4,3,2,3,49.247977,-123.023901,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.09-40-00
+      E,5,3,2,2,49.252378,-123.023873,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.09-53-00
+      E,6,3,1-2,2,49.252403,-123.031003,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.10-33-00
+      E,7,3,2,2,49.252443,-123.03732,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.10-45-00
+      E,8,3,0,2,49.252376,-123.043286,N,,,,,Michelle Baudais Harvey Dueck,"noise was on the quiet end of 2, maybe 1",2022-04-02.08-29-00
+      E,9,3,1,3,49.257077,-123.044215,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.10-56-00
+      E,10,4,1,2,49.257242,-123.037976,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.11-07-00
+      E,11,4,1,3,49.256578,-123.031136,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.11-20-00
+      E,12,3,1,3,49.257376,-123.023897,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.10-10-00
+      E,13,3,1,3,49.261378,-123.02376,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.08-02-00
+      E,14,3,1,2,49.262143,-123.028832,N,,,,,Michelle Baudais Harvey Dueck,noise was at the quiet end of 2,2022-04-02.07-40-00
+      E,15,2,1,2,49.261541,-123.037978,N,,,,,Michelle Baudais Harvey Dueck,flicker calling and drumming,2022-04-02.07-23-00
+      E,16,3,1,2,49.261396,-123.044444,N,,,,,Michelle Baudais Harvey Dueck,,2022-04-02.07-08-00
+      ... real file would have more lines with data from other quadrats and all fields would have valid values
+          e.g. all wind fields emtered using the form will have only a single digit value
