@@ -79,7 +79,79 @@ def csv_write_to_google_cloud(filename, columns, data):
     return msg
 
 
-def getData(year=None):
+def is_there_new_data():
+    """
+    Returns true if any object in the bucket has a newer timestamp than SUMMARY_FILE_NAME
+    """
+    storage_client = storage.Client()
+    bucket_name = STORAGE_BUCKET_NAME
+    # first try to read from an existing bucket
+    bucket = storage_client.get_bucket(bucket_name)
+
+    if bucket is None:
+        # TODO: display error page on failure
+        return "Failed to open data bucket " + STORAGE_BUCKET_NAME + ", sorry"
+
+    # check all blobs in the bucket, adding those from this year to the list
+    data_file_pattern = "[A-X]\.([0-9]){2}\.([0-9]{4})-[0-1][0-9]-[0-3][0-9]\.[0-6][0-9]-[0-6][0-9]-[0-6][0-9]\.csv"
+    years = {}
+    blob_list = storage_client.list_blobs(STORAGE_BUCKET_NAME)
+    reference_time = None
+    last_data_update_time = None
+    for blob in blob_list:
+        m = re.match(data_file_pattern, blob.name)
+        if m:
+            y = m.group(2)
+            years[y] = 1
+            if last_data_update_time is None or blob.updated > last_data_update_time:
+                last_data_update_time = blob.updated
+        elif blob.name == SUMMARY_FILE_NAME:
+            reference_time = blob.updated
+
+    years = sorted(years.keys())
+    is_new = False
+    if last_data_update_time is not None and (reference_time is None or reference_time < last_data_update_time):
+        is_new = True
+    return is_new, years
+
+
+def regenerate_data_summaries():
+    """
+    Recreate all the data summary CSV files
+    """
+    # gather all the data
+    data = get_data()
+
+    yearly_data = parse_data_by_year(data)
+
+    # create the summary data file
+    csv_write_to_google_cloud(SUMMARY_FILE_NAME, FILE_FIELD_NAMES, data)
+
+    # now write summary files for all years
+    # TODO: this is inefficient.  We should only update the file for years with new data
+    yearly_summaries = {}
+    for year in yearly_data.keys():
+        year_file_name = "COHA-data-" + str(year) + ".csv"
+        yearly_summaries[year] = STORAGE_BUCKET_PUBLIC_URL + "/" + year_file_name
+        csv_write_to_google_cloud(year_file_name, FILE_FIELD_NAMES, yearly_data[year])
+
+    return data, yearly_data
+
+def parse_data_by_year(data):
+    """
+    Returns the data broken out by year
+    """
+    # compile lists of the data from each year, so we can save year files
+    yearly_data = {}
+    for i in range(0, len(data)):
+        year = data[i]["timestamp"][0:4]
+        if year in yearly_data:
+            yearly_data[year].append(data[i])
+        else:
+            yearly_data[year] = [data[i]]
+    return yearly_data
+
+def get_data(year=None):
     """
     Read all the data files for the specified year and return an array of dicts whose keys are the field names
 
@@ -124,6 +196,31 @@ def getData(year=None):
     return data
 
 
+def get_summary_data(summary_file=SUMMARY_FILE_NAME):
+    """
+    Get data from a summary file.
+    This should be faster than having to read all observation files.
+    """
+    data = []
+    storage_client = storage.Client()
+    bucket_name = STORAGE_BUCKET_NAME
+    # first try to read from an existing bucket
+    bucket = storage_client.get_bucket(bucket_name)
+
+    if bucket is None:
+        # TODO: display error page on failure
+        return data
+    try:
+        with bucket.blob(summary_file).open("r") as blob:
+            reader = csv.DictReader(blob)
+            for row in reader:
+                data.append(dict(row))
+    except Exception as e:
+        pass
+
+    return data
+
+
 def load_station_coords():
     """
     Load prior station coordinates so we can sanity check the new station location
@@ -154,18 +251,17 @@ def sanitize_text_input(untrusted, max_len=100):
     return sanitized
 
 
-def getCookieData():
-    defaultObservers = ""
+def get_cookie_data():
     defaultQuadrat = "Choose"
     observers = request.cookies.get('observers')
     quadrat = request.cookies.get('quadrat')
-    observers = "" if observers is None else observers
-    observers = sanitize_text_input(observers)
+
+    observers = "" if observers is None else sanitize_text_input(observers)
     quadrat = "Choose" if quadrat is None else quadrat
     quadrat = quadrat if quadrat in quadrats else defaultQuadrat
     return observers, quadrat
 
-def isIphone():
+def is_iphone():
     """
     look for iPhone in the user-agent field of the HTTP request
     """
@@ -174,10 +270,10 @@ def isIphone():
 
 @app.route('/')
 def collect_data():  # put application's code here
-    (observers, quadrat) = getCookieData()
+    (observers, quadrat) = get_cookie_data()
     # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
     # Figure out the platform from the user-agent header.
-    iphone = isIphone()
+    iphone = is_iphone()
 
     msg = "Select Station and conditions before starting the survey."
     return render_template('coha-ui.html',
@@ -195,7 +291,7 @@ def save_data():
     timestamp = datetime.datetime.now(tz=pytz.timezone("Canada/Pacific")).strftime("%Y-%m-%d.%H-%M-%S")
     form = request.form
     # Get the observers address and quadrat from a cookie, if available
-    (observers, quadrat) = getCookieData()
+    (observers, quadrat) = get_cookie_data()
 
     # get the form data
     fieldNames = FORM_FIELD_NAMES
@@ -241,7 +337,7 @@ def save_data():
 
     # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
     # Figure out the platform from the user-agent header.
-    iphone = isIphone()
+    iphone = is_iphone()
 
     msg = csv_write_to_google_cloud(filename, csvColumns, [fields])
     return render_template('coha-ui.html',
@@ -255,44 +351,37 @@ def show_map():
     """
     Display a map of the datapoints received for the most recent year
     """
+    # regenerate data files if needed
+    need_regen, years = is_there_new_data()
+    if need_regen:
+        data, yearly_data = regenerate_data_summaries()
+    else:
+        data = get_summary_data()
+        yearly_data = parse_data_by_year(data)
+
     # Get the current year
     year = datetime.date.today().year
 
     # look for files matching the current year.  If none found, look for previous year
-    data = getData(year)
+    if year in years:
+        year = years[:-1]
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
-    return render_template('coha-map.html', data=data, year=year, maps_api_key=MAPS_API_KEY)
+    return render_template('coha-map.html', yearly_data=yearly_data, year=year, years=years, maps_api_key=MAPS_API_KEY)
+
 
 @app.route('/data/')
 def csv_data():
     """
     Return all the data as a csv file
     """
-    # gather all the data
-    data = getData()
-
-    # compile lists of the data from each year, so we can save year files
-    yearly_data = {}
-    for i in range(0, len(data)):
-        year = data[i]["timestamp"][0:4]
-        if year in yearly_data:
-            yearly_data[year].append(data[i])
-        else:
-            yearly_data[year] = [data[i]]
-
-    # create the summary data file
-    csv_write_to_google_cloud(SUMMARY_FILE_NAME, FILE_FIELD_NAMES, data)
-
-    # now write summary files for all years
-    #TODO: this is inefficient.  Eventually we will be in a state where data from prior years doesn't change.
-    #TODO: (continued) In that case, we should only update the file for the current year
-    yearly_summaries = {}
-    years = sorted(yearly_data.keys())
-    for year in yearly_data.keys():
-        year_file_name = "COHA-data-" + str(year) + ".csv"
-        yearly_summaries[year] = STORAGE_BUCKET_PUBLIC_URL + "/" + year_file_name
-        csv_write_to_google_cloud(year_file_name, FILE_FIELD_NAMES, yearly_data[year])
+    # update the summary files if there is new data
+    if is_there_new_data():
+        (data, yearly_summaries) = regenerate_data_summaries()
+    else:
+        data = get_summary_data()
+        yearly_summaries = parse_data_by_year(data)
+    years = sorted(yearly_summaries.keys())
 
     # return a redirect to the google cloud storage URL
     return render_template("coha-download.html",
