@@ -15,12 +15,14 @@ window.initMap = initMap;
 
 function clear_markers() {
   markers.forEach((m) => {m.setMap(null);});
+  markers = [];
 }
 
 function show_year() {
   let i=0;
   let year = document.getElementById("select_year").value;
   let data = yearly_data[year]
+  clear_markers();
   for (; i < data.length; ++i) {
     let row = data[i];
     const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};

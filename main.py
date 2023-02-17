@@ -94,25 +94,21 @@ def is_there_new_data():
 
     # check all blobs in the bucket, adding those from this year to the list
     data_file_pattern = "[A-X]\.([0-9]){2}\.([0-9]{4})-[0-1][0-9]-[0-3][0-9]\.[0-6][0-9]-[0-6][0-9]-[0-6][0-9]\.csv"
-    years = {}
     blob_list = storage_client.list_blobs(STORAGE_BUCKET_NAME)
     reference_time = None
     last_data_update_time = None
     for blob in blob_list:
         m = re.match(data_file_pattern, blob.name)
         if m:
-            y = m.group(2)
-            years[y] = 1
             if last_data_update_time is None or blob.updated > last_data_update_time:
                 last_data_update_time = blob.updated
         elif blob.name == SUMMARY_FILE_NAME:
             reference_time = blob.updated
 
-    years = sorted(years.keys())
     is_new = False
     if last_data_update_time is not None and (reference_time is None or reference_time < last_data_update_time):
         is_new = True
-    return is_new, years
+    return is_new
 
 
 def regenerate_data_summaries():
@@ -352,7 +348,7 @@ def show_map():
     Display a map of the datapoints received for the most recent year
     """
     # regenerate data files if needed
-    need_regen, years = is_there_new_data()
+    need_regen = is_there_new_data()
     if need_regen:
         data, yearly_data = regenerate_data_summaries()
     else:
@@ -363,6 +359,7 @@ def show_map():
     year = datetime.date.today().year
 
     # look for files matching the current year.  If none found, look for previous year
+    years = sorted(yearly_data.keys())
     if year in years:
         year = years[:-1]
 
@@ -377,11 +374,17 @@ def csv_data():
     """
     # update the summary files if there is new data
     if is_there_new_data():
-        (data, yearly_summaries) = regenerate_data_summaries()
+        (data, yearly_data) = regenerate_data_summaries()
     else:
         data = get_summary_data()
-        yearly_summaries = parse_data_by_year(data)
-    years = sorted(yearly_summaries.keys())
+        yearly_data = parse_data_by_year(data)
+
+    years = sorted(yearly_data.keys())
+    yearly_summaries = {}
+    for year in yearly_data.keys():
+        year_file_name = "COHA-data-" + str(year) + ".csv"
+        yearly_summaries[year] = STORAGE_BUCKET_PUBLIC_URL + "/" + year_file_name
+
 
     # return a redirect to the google cloud storage URL
     return render_template("coha-download.html",
