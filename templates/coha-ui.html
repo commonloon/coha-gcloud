@@ -30,13 +30,13 @@
           >
 
         <input
-                id="email"
-                name="email"
-                type="email"
-                value="{{ email }}"
-                onchange="emailChanged()"
+                id="observers"
+                name="observers"
+                type="text"
+                value="{{ observers }}"
+                onchange="observersChanged()"
                 class="input"
-                placeholder="Email address:"
+                placeholder="Observer Name(s):"
         />
         <select
                 name="quadrat" id="quadrat"
@@ -104,6 +104,15 @@
             <option value="unset" selected>Was COHA detected?</option>
             <option value="no" >No</option>
             <option value="yes">Yes - COHA was seen or heard</option>
+        </select>
+        <select id="detection_type" name="detection_type" hidden onchange="detectionTypeChanged()">
+            <option value="A" selected>Heard call only</option>
+            <option value="V">Bird seen</option>
+        </select>
+        <select id="age_class" name="age_class" hidden>
+            <option value="unknown" selected>Age unknown</option>
+            <option value="juvenile" >Juvenile</option>
+            <option value="adult" >Adult</option>
         </select>
 
         <input

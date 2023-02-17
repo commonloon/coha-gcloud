@@ -21,7 +21,7 @@ var mapMarkers = [];
 
 // initialize the quadrat boundaries if quadrat is set by cookie
 window.onload = () => {
-    emailChanged();
+    observersChanged();
     quadratChanged();
 }
 
@@ -78,7 +78,7 @@ function initAudio() {
 var timer = null;
 
 // Form state
-var emailSet = false;
+var observersSet = false;
 var quadratSet = false;
 var stationSet = false;
 var cloudSet = false;
@@ -86,19 +86,23 @@ var windSet = false;
 var noiseSet = false;
 var cohaDetected = false;
 
-function isEmail(email) {
-  let EmailRegex = /^([a-zA-Z0-9_.+-])+\@(([a-zA-Z0-9-])+\.)+([a-zA-Z0-9]{2,4})+$/;
-  return EmailRegex.test(email);
+function sanitizeObservers(untrusted) {
+    const replacementPattern = "[^A-Za-z .:;,']";  // replace all but a few characters
+    return untrusted.replaceAll(replacementPattern, "").trim()
 }
-function emailChanged() {
-    const emailStr = document.getElementById("email").value
-    if (isEmail(emailStr)) {
-        emailSet = true;
-        // save the email address as a browser cookie
-        document.cookie = "email=" + emailStr;
+
+
+function observersChanged() {
+    let observersStr = sanitizeObservers(document.getElementById("observers").value);
+
+
+    if (observersStr !== "") {
+        observersSet = true;
+        // save the observer name(s) as a browser cookie
+        document.cookie = "observers=" + observersStr;
     } else {
-        emailSet = false;
-        alert('Invalid email address');
+        observersSet = false;
+        alert('Please use at least a few letters to identify the observer(s)');
     }
 }
 
@@ -276,11 +280,27 @@ function detectionChanged() {
     let val = document.getElementById("detection").value;
 
     cohaDetected = val === "yes";
+    if (cohaDetected) {
+        let detectionTypeElement = document.getElementById("detection_type");
+
+        detectionTypeElement.hidden = false;
+    }
+}
+
+function detectionTypeChanged() {
+    let detectionTypeElement = document.getElementById("detection_type");
+
+    const detection_type = detectionTypeElement.value;
+
+    if (detection_type === "V") {
+        let ageElement = document.getElementById("age_class");
+        ageElement.hidden = false;
+    }
 }
 
 function formChanged() {
     let submitButton = document.getElementById("submit");
-    const emailStr = document.getElementById("email").value;
+    const observersStr = document.getElementById("observers").value;
 
     if (context === null) {
         context = new AudioContext();
@@ -290,14 +310,18 @@ function formChanged() {
     // clear the message field
     document.getElementById("message").textContent = "unsaved changes";
 
+    if (!observersSet && observersStr.length > 0) {
+        observersStr = sanitizeObservers(observersStr);
+    }
+
     // Perform field validation and enable/disable form elements as required
-    if (emailSet || (isEmail(emailStr))) {
-        // special email address triggers debug mode
-        if (emailStr === "debug@pacificloon.ca") {
+    if (observersSet || observersStr !== "") {
+        // special observer name triggers debug mode that shortens some countdown timers
+        if (observersStr === "debug") {
             debug = true;
         }
 
-        // Once we know the user, allow selection of the quadrat
+        // Once we know the observer(s), allow selection of the quadrat
         document.getElementById("quadrat").disabled = false;
 
         if (quadratSet || isValidQuadrat(document.getElementById("quadrat").value)) {
