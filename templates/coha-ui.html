@@ -16,6 +16,7 @@
 </head>
 <body>
 <script>
+    var iphone = {% if iphone %} true {% else %} false {% endif %};
     var stationCoordinates = JSON.parse( '{{ coords | tojson | safe }}');
 </script>
 <div class="container">
@@ -147,9 +148,9 @@
     <div id="footer">
         <p id="message">{{ message }}</p>
         {% if iphone %}
-            <button name="fortySecondTimer" id="fortySecondTimer" type="button" onclick="fortySecondTimer()">40 second timer</button>
             <button name="twoMinuteTimer" id="twoMinuteTimer" type="button" onclick="twoMinuteTimer()">2 minute timer</button>
-            <button name="clearTimer" id="clearTimer" type="button" onclick="clearTimer()">Stop timer</button>
+            <button name="fortySecondTimer" id="fortySecondTimer" type="button" onclick="fortySecondTimer()">40 second timer</button>
+            <button name="clearTimer" id="clearTimer" type="button" onclick="clearTimer()">Clear timer</button>
         {% else %}
         <button name="startButton" id="startButton" type="button" onclick="startSurvey()" disabled>Start Survey</button>
         {% endif %}

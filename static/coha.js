@@ -25,6 +25,13 @@ window.onload = () => {
     quadratChanged();
 }
 
+const protocol_msg =
+"- Observe for two minutes<br>" +
+"- play call 20s / observe 40s<br>" +
+"- play call 20s / observe 40s<br>" +
+"- play call 20s / observe 40s<br>" +
+"- Observe for two minutes<br>" +
+"- Record result and save observation";
 
 
 // Initialize audio on window load
@@ -300,7 +307,7 @@ function detectionTypeChanged() {
 
 function formChanged() {
     let submitButton = document.getElementById("submit");
-    const observersStr = document.getElementById("observers").value;
+    let observersStr = document.getElementById("observers").value;
 
     if (context === null) {
         context = new AudioContext();
@@ -353,6 +360,14 @@ function formChanged() {
                     // other required fields have been assigned values.
                     let detectionValue = document.getElementById("detection").value;
                     submitButton.disabled = !(detectionValue === "yes" || detectionValue === "no");
+
+                    if (iphone) {
+                        // Display the protocol in the message container.
+                        // iPhone users need to run the protocol manually, so they need instructions
+                        let messageContainer = document.getElementById("message");
+                        messageContainer.innerHTML = protocol_msg;
+                        messageContainer.style.fontSize = "16px";
+                    }
                 } else {
                     // conditions must be specified before submitting form
                     submitButton.disabled = true;
