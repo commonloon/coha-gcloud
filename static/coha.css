@@ -153,7 +153,22 @@ textarea {
   border-radius: 10px;
 }
 
-#helpLink {
-  padding: 1em;
-  margin-top: 20px;
+#helpDiv {
+  display: grid;
+  text-align: center;
+  border-radius: 20px;
+  padding: 10px 1em 1px 10px;
+  margin-bottom: 10px;
+  width: 100%;
+  opacity: 0.75;
+}
+
+#scrollPrompt {
+  font-size: 16px;
+  color: #E3B448;
+  background-color: #281f18;
+  opacity:75;
+  border-radius: 20px;
+  margin-bottom: 0;
+  margin-top: 0;
 }

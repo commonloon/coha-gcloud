@@ -18,6 +18,7 @@ var surveyBounds = {
 
 // We need to keep a record of google maps markers so we can erase them
 var mapMarkers = [];
+var positionMarker = null;
 
 // initialize the quadrat boundaries if quadrat is set by cookie
 window.onload = () => {
@@ -43,16 +44,16 @@ var audioSource = null;
 //  TODO: improve validation of values in text fields, e.g. direction, distance
 
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-  var R = 6371; // Radius of the earth in km
-  var dLat = deg2rad(lat2-lat1);  // deg2rad below
-  var dLon = deg2rad(lon2-lon1);
-  var a =
+  let R = 6371; // Radius of the earth in km
+  let dLat = deg2rad(lat2-lat1);  // deg2rad below
+  let dLon = deg2rad(lon2-lon1);
+  let a =
     Math.sin(dLat/2) * Math.sin(dLat/2) +
     Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) *
     Math.sin(dLon/2) * Math.sin(dLon/2)
     ;
-  var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  var d = R * c; // Distance in km
+  let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  let d = R * c; // Distance in km
   return d;
 }
 
@@ -63,7 +64,7 @@ function deg2rad(deg) {
 function initAudio() {
     // load the audio into cohaBuffer
     let request = new XMLHttpRequest();
-    request.open('GET', "/COHA.mp3", true);
+    request.open('GET', "/COHA.modified.mp3", true);
     request.responseType = 'arraybuffer';
 
     // Decode asynchronously
@@ -142,7 +143,7 @@ function mapStations(quadrat) {
     let coords = stationCoordinates[quadrat];
     let station=1;
     for(; station < 17; ++station) {
-        stationMarker(coords[station], station, quadrat);;
+        stationMarker(coords[station], station, quadrat);
     }
 }
 
@@ -171,29 +172,17 @@ function quadratChanged() {
 
 function mapMarker(latitude, longitude, label) {
     const pos = {lat: parseFloat(latitude), lng: parseFloat(longitude)};
-    const image = {
-        url: "https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png",
-        // This marker is 20 pixels wide by 32 pixels high.
-        size: new google.maps.Size(20, 32),
-        // The origin for this image is (0, 0).
-        origin: new google.maps.Point(0, 0),
-        // The anchor for this image is the base of the flagpole at (0, 32).
-        anchor: new google.maps.Point(0, 32),
-    };
-    // Shapes define the clickable region of the icon. The type defines an HTML
-    // <area> element 'poly' which traces out a polygon as a series of X,Y points.
-    // The final coordinate closes the poly by connecting to the first coordinate.
-    const shape = {
-        coords: [1, 1, 1, 20, 18, 20, 18, 1],
-        type: "poly",
-    };
     const marker = new google.maps.Marker({
         position: pos,
         map: map,
         title: label,
         label: "YOU"
     });
-    mapMarkers.push(marker)
+    if (positionMarker != null) {
+        // clear the old marker
+        positionMarker.setMapt(null);
+    }
+    positionMarker = marker;
     const c = new google.maps.Circle({
       strokeColor: "#0000FF",
       strokeOpacity: 0.8,
@@ -222,6 +211,26 @@ function distanceFromStation(quadrat, station, lat, long, nominalLocation) {
     message += "quadrat " + quadrat + " station " + station + ". ";
     message += "Did you select the correct station? If so, please double-check the latitude/longitude values below";
     return message
+}
+
+function geolocationError(error) {
+  let msg;
+  switch(error.code) {
+    case error.PERMISSION_DENIED:
+      msg = "User denied the request for Geolocation. ";
+      break;
+    case error.POSITION_UNAVAILABLE:
+      msg =  "Location information is unavailable.";
+      break;
+    case error.TIMEOUT:
+      msg= "The request to get user location timed out."
+      break;
+    case error.UNKNOWN_ERROR:
+      msg = "An unknown error occurred."
+      break;
+  }
+  msg += "  Please manually enter latitude and longitude.";
+  alert(msg);
 }
 
 function stationChanged() {
@@ -263,7 +272,7 @@ function stationChanged() {
                 if (d > 0.4) {
                     alert(distanceFromStation(quadrat, station, lt, lo, nominalLocation));
                 }
-            });
+            }, geolocationError);
         }
     }
 }
@@ -534,39 +543,6 @@ function initMap() {
     center: { lat: lat, lng: lng },
     zoom: 12,
   });
-  /*
-  let i=0;
-  for (; i < data.length; ++i) {
-    let row = data[i];
-    const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};
-    new google.maps.Marker({
-      position: pos,
-      map: map,
-      title: row.quadrat + ":" + row.station
-    });
-    if (row.detection === "yes") {
-      let distance = parseFloat(row.distance);
-      let bearing = parseInt(row.direction);
-      if (!isNaN(distance) && ! isNaN(bearing)) {
-        distance /= 1000;  // convert m to km
-        terminus = llFromDistance(pos.lat, pos.lng, distance, bearing);
-        let path = [
-          {lat: pos.lat, lng: pos.lng},
-          {lat: terminus[0], lng: terminus[1]}
-        ];
-        const stroke = new google.maps.Polyline({
-          path: path,
-          geodesic: true,
-          strokeColor: "#8800ff",
-          strokeOpacity: 1.0,
-          strokeWeight: 8,
-        });
-        stroke.setMap(map);
-      }
-    }
-  }
-
-   */
 }
 
 window.initMap = initMap;
