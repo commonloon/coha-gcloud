@@ -28,6 +28,13 @@ OPTIONAL_FIELDS = ["direction", "distance", "detection_type", "age_class"]
 SUMMARY_FILE_NAME = "COHA-data-all-years.csv"
 SUMMARY_FILE_PUBLIC_URL = STORAGE_BUCKET_PUBLIC_URL + "/" + SUMMARY_FILE_NAME
 
+SURVEY_BOUNDS = {
+    "west": -123.157770,
+    "north": 49.263912,
+    "south": 49.209423,
+    "east": -122.937837
+};
+
 app = Flask(__name__, template_folder="templates", static_folder='static', static_url_path='')
 Markdown(app)
 
@@ -280,10 +287,12 @@ def collect_data():  # put application's code here
 
 @app.route('/save/', methods=['GET', 'POST'])
 def save_data():
-    '''
+    """
     handle the submitted data for a single station
     :return:
-    '''
+    """
+    ok_to_save = True
+    bad = "bad value"
     timestamp = datetime.datetime.now(tz=pytz.timezone("Canada/Pacific")).strftime("%Y-%m-%d.%H-%M-%S")
     form = request.form
     # Get the observers address and quadrat from a cookie, if available
@@ -301,10 +310,46 @@ def save_data():
         except Exception as e:
             fields[field] = ""
             if field not in OPTIONAL_FIELDS:
-                msg += " Missing value for field:" + field
+                msg += " Missing value for field:" + field + ".  "
+
+    # no point saving if we don't have location data
+    latitude = fields["latitude"]
+    longitude = fields["longitude"]
+    errmsg = "ERROR: Failed to save observation.   "
+    if latitude == "":
+        errmsg += "Latitude must have a value.  "
+        fields["latitude"] = bad
+    else:
+        try:
+            latitude = float(latitude)
+            if (latitude < (SURVEY_BOUNDS["south"] - 0.1)) or latitude > (SURVEY_BOUNDS["north"]+0.1):
+                ok_to_save = False
+                errmsg += "latitude out of bounds.  "
+                fields["latitude"] = bad
+            else:
+                latitude = str(latitude)
+        except Exception as e:
+            ok_to_save = False
+            fields["latitude"] = bad
+            errmsg += "invalid value for latitude.  "
+    if longitude == "":
+        errmsg += "Longitude must have a value.  "
+        fields["longitude"] = bad
+    else:
+        try:
+            longitude = float(longitude)
+            if (longitude < (SURVEY_BOUNDS["west"] - 0.1)) or longitude > (SURVEY_BOUNDS["east"]+0.1):
+                ok_to_save = False
+                fields["longitude"] = bad
+                errmsg += "latitude out of bounds.  "
+            else:
+                latitude = str(longitude)
+        except Exception as e:
+            ok_to_save = False
+            fields["longitude"] = bad
+            errmsg += "invalid value for longitude."
 
     # sanitize the data, so the site is harder to exploit by bad actors
-    bad = "bad value"
     fields["observers"] = sanitize_text_input(fields["observers"])
     fields["quadrat"] = fields["quadrat"] if fields["quadrat"] in quadrats else bad
     fields["station"] = fields["station"] if fields["station"] in stations  else bad
@@ -312,8 +357,8 @@ def save_data():
     fields["wind"] = fields["wind"] if fields["wind"] in windValues else bad
     fields["noise"] = fields["noise"] if fields["noise"] in noiseValues else bad
     fields["notes"] = html.escape(fields["notes"])[:2048]
-    fields["latitude"] = str(float(fields["latitude"]))[:15]
-    fields["longitude"] = str(float(fields["longitude"]))[:15]
+    fields["latitude"] = str(float(fields["latitude"]))[:15] if fields["latitude"] != bad else bad
+    fields["longitude"] = str(float(fields["longitude"]))[:15] if fields["longitude"] != bad else bad
     fields["detection"] = fields["detection"] if fields["detection"] in ["no", "yes"] else bad
     if "direction" in fields.keys() and fields["direction"] != "":
         fields["direction"] = re.sub("[^0-9]", "", fields["direction"])  # strip non-digits
@@ -328,14 +373,22 @@ def save_data():
     fields["detection_type"] = fields["detection_type"] if fields["detection_type"] in ["A", "V"] else ""
     fields["age_class"] = fields["age_class"] if fields["age_class"] in ["unknown", "juvenile", "adult"] else ""
 
-    # save the data file
-    filename = "{}.{:02d}.{}.csv".format(fields['quadrat'], int(fields['station']), timestamp)
+    for field in FORM_FIELD_NAMES:
+        if fields[field] == bad:
+            ok_to_save = False
+            break
+
+    if ok_to_save:
+        # save the data file
+        filename = "{}.{:02d}.{}.csv".format(fields['quadrat'], int(fields['station']), timestamp)
+        msg = csv_write_to_google_cloud(filename, csvColumns, [fields])
+    else:
+        msg = errmsg + msg
 
     # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
     # Figure out the platform from the user-agent header.
     iphone = is_iphone()
 
-    msg = csv_write_to_google_cloud(filename, csvColumns, [fields])
     return render_template('coha-ui.html',
                            observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
                            quadrats=quadrats, stations=stations, coords=load_station_coords(),

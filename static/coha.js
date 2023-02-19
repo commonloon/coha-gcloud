@@ -180,7 +180,7 @@ function mapMarker(latitude, longitude, label) {
     });
     if (positionMarker != null) {
         // clear the old marker
-        positionMarker.setMapt(null);
+        positionMarker.setMap(null);
     }
     positionMarker = marker;
     const c = new google.maps.Circle({
@@ -272,7 +272,7 @@ function stationChanged() {
                 if (d > 0.4) {
                     alert(distanceFromStation(quadrat, station, lt, lo, nominalLocation));
                 }
-            }, geolocationError);
+            }, geolocationError, {maximumAge:10000, timeout:5000, enableHighAccuracy: true});
         }
     }
 }
