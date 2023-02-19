@@ -27,13 +27,14 @@ OPTIONAL_FIELDS = ["direction", "distance", "detection_type", "age_class"]
 
 SUMMARY_FILE_NAME = "COHA-data-all-years.csv"
 SUMMARY_FILE_PUBLIC_URL = STORAGE_BUCKET_PUBLIC_URL + "/" + SUMMARY_FILE_NAME
+DATA_FILE_NAME_PATTERN = "[A-X]\\.([0-9]){2}\\.([0-9]{4})-[0-1][0-9]-[0-3][0-9]\\.[0-6][0-9]-[0-6][0-9]-[0-6][0-9]\\.csv"
 
 SURVEY_BOUNDS = {
     "west": -123.157770,
     "north": 49.263912,
     "south": 49.209423,
     "east": -122.937837
-};
+}
 
 app = Flask(__name__, template_folder="templates", static_folder='static', static_url_path='')
 Markdown(app)
@@ -100,12 +101,11 @@ def is_there_new_data():
         return "Failed to open data bucket " + STORAGE_BUCKET_NAME + ", sorry"
 
     # check all blobs in the bucket, adding those from this year to the list
-    data_file_pattern = "[A-X]\.([0-9]){2}\.([0-9]{4})-[0-1][0-9]-[0-3][0-9]\.[0-6][0-9]-[0-6][0-9]-[0-6][0-9]\.csv"
     blob_list = storage_client.list_blobs(STORAGE_BUCKET_NAME)
     reference_time = None
     last_data_update_time = None
     for blob in blob_list:
-        m = re.match(data_file_pattern, blob.name)
+        m = re.match(DATA_FILE_NAME_PATTERN, blob.name)
         if m:
             if last_data_update_time is None or blob.updated > last_data_update_time:
                 last_data_update_time = blob.updated
@@ -140,6 +140,7 @@ def regenerate_data_summaries():
 
     return data, yearly_data
 
+
 def parse_data_by_year(data):
     """
     Returns the data broken out by year
@@ -153,6 +154,7 @@ def parse_data_by_year(data):
         else:
             yearly_data[year] = [data[i]]
     return yearly_data
+
 
 def get_data(year=None):
     """
@@ -171,13 +173,12 @@ def get_data(year=None):
 
     # check all blobs in the bucket, adding those from this year to the list
     year = year  # need the year as a string
-    data_file_pattern = "[A-X]\.([0-9]){2}\.([0-9]){4}-[0-1][0-9]-[0-3][0-9]\.[0-6][0-9]-[0-6][0-9]-[0-6][0-9]\.csv"
     year_pattern = "[A-X][.][0-9][0-9][.]" + str(year)
     names = []
     for blob in storage_client.list_blobs(STORAGE_BUCKET_NAME):
         name = blob.name
         # only process appropriately named files.  Who knows what else we'll stick in the bucket later
-        if re.match(data_file_pattern, name):
+        if re.match(DATA_FILE_NAME_PATTERN, name):
             # if a year is selected, only choose matching files
             if year is not None:
                 # get data for the selected year
@@ -255,14 +256,15 @@ def sanitize_text_input(untrusted, max_len=100):
 
 
 def get_cookie_data():
-    defaultQuadrat = "Choose"
+    default_quadrat = "Choose"
     observers = request.cookies.get('observers')
     quadrat = request.cookies.get('quadrat')
 
     observers = "" if observers is None else sanitize_text_input(observers)
     quadrat = "Choose" if quadrat is None else quadrat
-    quadrat = quadrat if quadrat in quadrats else defaultQuadrat
+    quadrat = quadrat if quadrat in quadrats else default_quadrat
     return observers, quadrat
+
 
 def is_iphone():
     """
@@ -270,6 +272,7 @@ def is_iphone():
     """
     agent = str(request.headers.get("user-agent"))
     return re.search('iPhone', agent) is not None
+
 
 @app.route('/')
 def collect_data():  # put application's code here
@@ -327,7 +330,7 @@ def save_data():
                 errmsg += "latitude out of bounds.  "
                 fields["latitude"] = bad
             else:
-                latitude = str(latitude)
+                fields["latitude"] = str(latitude)  # yay, we have a good value!
         except Exception as e:
             ok_to_save = False
             fields["latitude"] = bad
@@ -343,7 +346,7 @@ def save_data():
                 fields["longitude"] = bad
                 errmsg += "latitude out of bounds.  "
             else:
-                latitude = str(longitude)
+                fields["longitude"] = str(longitude)  # yay, we have a good value!
         except Exception as e:
             ok_to_save = False
             fields["longitude"] = bad
@@ -352,13 +355,11 @@ def save_data():
     # sanitize the data, so the site is harder to exploit by bad actors
     fields["observers"] = sanitize_text_input(fields["observers"])
     fields["quadrat"] = fields["quadrat"] if fields["quadrat"] in quadrats else bad
-    fields["station"] = fields["station"] if fields["station"] in stations  else bad
+    fields["station"] = fields["station"] if fields["station"] in stations else bad
     fields["cloud"] = fields["cloud"] if fields["cloud"] in cloudValues else bad
     fields["wind"] = fields["wind"] if fields["wind"] in windValues else bad
     fields["noise"] = fields["noise"] if fields["noise"] in noiseValues else bad
     fields["notes"] = html.escape(fields["notes"])[:2048]
-    fields["latitude"] = str(float(fields["latitude"]))[:15] if fields["latitude"] != bad else bad
-    fields["longitude"] = str(float(fields["longitude"]))[:15] if fields["longitude"] != bad else bad
     fields["detection"] = fields["detection"] if fields["detection"] in ["no", "yes"] else bad
     if "direction" in fields.keys() and fields["direction"] != "":
         fields["direction"] = re.sub("[^0-9]", "", fields["direction"])  # strip non-digits
@@ -437,7 +438,6 @@ def csv_data():
     for year in yearly_data.keys():
         year_file_name = "COHA-data-" + str(year) + ".csv"
         yearly_summaries[year] = STORAGE_BUCKET_PUBLIC_URL + "/" + year_file_name
-
 
     # return a redirect to the google cloud storage URL
     return render_template("coha-download.html",
