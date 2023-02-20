@@ -233,6 +233,49 @@ function geolocationError(error) {
   alert(msg);
 }
 
+function updateLocation() {
+    navigator.geolocation.getCurrentPosition(function (position) {
+        console.log("Latitude is :", position.coords.latitude);
+        console.log("Longitude is :", position.coords.longitude);
+        console.log("accuracy is :", position.coords.accuracy);
+        let lt = position.coords.latitude;
+        let lo = position.coords.longitude;
+
+        // map the current location
+        mapMarker(lt, lo, "Current Position")
+
+        // center the map on our current location and zoom appropriately
+        map.setCenter({lat: lt, lng: lo});
+        map.setZoom(14);
+
+        if (stationSet) {
+            let station = document.getElementById("station").value;
+            let quadrat = document.getElementById("quadrat").value;
+            let latField = document.getElementById("latitude");
+            let longField = document.getElementById("longitude");
+            let nominalLocation = stationCoordinates[quadrat][station];
+
+            if (position.coords.accuracy > 50) {
+                // warn user if position accuracy is worse than 50 metres
+                alert("This GPS position is not accurate.  Double-check the latitude and longitude values");
+            }
+
+            // enable the latitude and longitude fields
+            latField.disabled = false;
+            longField.disabled = false;
+
+            // update the position regardless, but warn the user if they're far from the station
+            let d = getDistanceFromLatLonInKm(nominalLocation.latitude, nominalLocation.longitude, lt, lo);
+            longField.value = lo;
+            latField.value = lt;
+            if (d > 0.4) {
+                alert(distanceFromStation(quadrat, station, lt, lo, nominalLocation));
+            }
+        }
+
+    }, geolocationError, {maximumAge:10000, timeout:5000, enableHighAccuracy: true});
+}
+
 function stationChanged() {
     let val = document.getElementById("station").value;
     if (val === "Not selected" ) {
@@ -242,37 +285,7 @@ function stationChanged() {
         let n = Number.parseInt(val);
         stationSet = (0 < n) && (n < 17);
         if (stationSet) {
-            let station = n.toString();
-            let quadrat = document.getElementById("quadrat").value;
-
-            // Try to set the location fields automatically.
-            let latField = document.getElementById("latitude");
-            let longField = document.getElementById("longitude");
-            latField.disabled = false;
-            longField.disabled = false;
-
-            navigator.geolocation.getCurrentPosition(function (position) {
-                let nominalLocation = stationCoordinates[quadrat][station];
-                console.log("Latitude is :", position.coords.latitude);
-                console.log("Longitude is :", position.coords.longitude);
-                let lt = position.coords.latitude;
-                let lo = position.coords.longitude;
-
-                // map the current location
-                mapMarker(lt, lo, "Current Position")
-
-                // center the map on our current location and zoom appropriately
-                map.setCenter({lat: lt, lng: lo});
-                map.setZoom(14);
-
-                // update the position regardless, but warn the user if they're far from the station
-                let d = getDistanceFromLatLonInKm(nominalLocation.latitude, nominalLocation.longitude, lt, lo);
-                longField.value = lo;
-                latField.value = lt;
-                if (d > 0.4) {
-                    alert(distanceFromStation(quadrat, station, lt, lo, nominalLocation));
-                }
-            }, geolocationError, {maximumAge:10000, timeout:5000, enableHighAccuracy: true});
+            updateLocation();
         }
     }
 }

@@ -447,7 +447,7 @@ def csv_data():
 
 
 @app.route('/help/')
-def show_readme():
+def show_help():
     """
     Serve the README.md file as HTML.
 
@@ -458,7 +458,7 @@ def show_readme():
     # This is awkward, but we need the README.md file to be in the root directory for github
     # and we don't want to maintain two copies.  I could try adding a symlink in my local workspace, but
     # that would have to be repeated whenever the repo is cloned to a new machine and won't work on Windows.
-    with open("static/README.md", "r") as f:
+    with open("static/HELP.md", "r") as f:
         mkd_text = f.read()
     return render_template('help.html', mkd_text=mkd_text)
 
