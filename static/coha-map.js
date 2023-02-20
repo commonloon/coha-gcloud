@@ -1,4 +1,5 @@
 let map;
+let markers = [];
 
 function initMap() {
   let lat = 49.2366675;
@@ -7,16 +8,31 @@ function initMap() {
     center: { lat: lat, lng: lng },
     zoom: 12,
   });
+  show_year();
+}
+
+window.initMap = initMap;
+
+function clear_markers() {
+  markers.forEach((m) => {m.setMap(null);});
+  markers = [];
+}
+
+function show_year() {
   let i=0;
+  let year = document.getElementById("select_year").value;
+  let data = yearly_data[year]
+  clear_markers();
   for (; i < data.length; ++i) {
     let row = data[i];
     const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};
-    new google.maps.Marker({
+    let m = new google.maps.Marker({
       position: pos,
       map: map,
       title: row.quadrat + ":" + row.station
     });
-    if (row.detection === "yes") {
+    markers.push(m);
+    if (row.detection === "yes" || row.detection === "Y") {
       let distance = parseFloat(row.distance);
       let bearing = parseInt(row.direction);
       if (!isNaN(distance) && ! isNaN(bearing)) {
@@ -34,12 +50,12 @@ function initMap() {
           strokeWeight: 8,
         });
         stroke.setMap(map);
+        markers.push(stroke);
       }
     }
   }
 }
 
-window.initMap = initMap;
 
 
 // ----------------------------------------

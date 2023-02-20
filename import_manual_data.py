@@ -38,7 +38,7 @@ OPTIONAL_FIELDS = ["direction", "distance", "detection_type", "age_class"]
 if __name__ == '__main__':
     #  Get the input file name
     # TODO: get the input file name from the command line
-    input_filename = "2022-E-F.csv"
+    input_filename = "2021-Q.csv"
 
     # import the data
     data = []

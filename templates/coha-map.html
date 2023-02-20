@@ -9,10 +9,17 @@
 </head>
 <body>
 <script>
-    var data = JSON.parse( '{{ data | tojson | safe }}')
+    var yearly_data = JSON.parse( '{{ yearly_data | tojson | safe }}')
 </script>
-    <h1>COHA survey points collected in {{ year }}</h1>
+    <h1>COHA survey points for selected year</h1>
     <h2>A purple bar at the base of a marker indicates direction and distance to a detection.</h2>
+<form>
+    <select id="select_year" name="select_year" onchange="show_year()">
+    {% for year in years %}
+        <option value="{{ year }}">{{ year }}</option>
+    {% endfor %}
+    </select>
+</form>
     <div id="map"></div>
 
     <script
