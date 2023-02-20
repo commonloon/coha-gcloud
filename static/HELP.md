@@ -102,4 +102,4 @@ NOTE: *the current location does NOT update in real time.  It only updates when 
 e.g. if you move after selecting your desired station, you will need to temporarily select a different station,
 then select the correct station again to update your location.*
 
-![map showing current location and nearby stations](/map_demo.jpg)
+![map showing current location and nearby stations](/static/map_demo.jpg)
