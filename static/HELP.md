@@ -72,10 +72,9 @@ the coha.pacificloon.ca website is intended to replace.
    9. optionally add notes in the Notes field
    10. press the "**Save Observation**" button to save your results.  
        - **Your observation will be lost if you don't do this step**
-
 8. Go to the next station and repeat steps 5-7 until you have surveyed the entire quadrat
-   - **NOTE: the location is set when you select the station**, so don't select the station until you have arrived in the location where you plan to observe.
-   - If you need to reset your location, pick a different station, then pick the correct station again.
+   - **NOTE: the location is set when you select the station**, so select the station after you have arrived in the location where you plan to observe.
+   - If you need to reset your location before saving, use the "Update Location" button
 
 # Useful Tips for Survey Participants
 ## Report Problems in github
@@ -90,16 +89,24 @@ For a few quadrats, the station locations were taken from more recent surveys.
 When you select a station, the map updates to show a 400m radius circle centred on your current position.
 You can also see the nominal location of nearby stations.  An message box appears if your current position is more than 
 400m from the nominal location of the station you selected.  You should look at the map to make sure the web
-broswer reported your current location correctly.  If it did, you probably want to select a station that's within
-400m of your location.  If the map does NOT show your location correctly, please use some other method to get your
-latitude and longitude and enter the correct values into the form.
+browser reported your current location correctly.  If it did, you want to select the station that's closest
+to your location, or move so you're closer to the station. 
 
 Here's a screenshot of the map showing a current location as a blue circle, with yellow circles marking the
 nominal station locations.  In this example, the participant should probably choose station 3 for this observation
 (and consider whether to move closer to the nominal station location before taking their observation).
 
-NOTE: *the current location does NOT update in real time.  It only updates when you change the station selection.
-e.g. if you move after selecting your desired station, you will need to temporarily select a different station,
-then select the correct station again to update your location.*
+NOTE: *the current location does NOT update in real time.  Press "Update Location" if you move after 
+selecting the station.*
+
+## Note on location accuracy
+
+Your browser may not report your location accurately.  Check the map to make sure your location shown on the map
+matches your actual physical location.  If not, you will need to manually enter correct values for 
+latitude and longitude.
+
+Getting an inaccurate position from the web browser is usually a result of preferences you have set on your device,
+e.g. you may have turned off location services, denied location permissions to the website or told the browser to only
+show approximate location. 
 
 ![map showing current location and nearby stations](/static/map_demo.jpg)
