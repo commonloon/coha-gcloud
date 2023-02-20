@@ -1,5 +1,5 @@
 # Instructions for Survey Participants
-The main goal of the [coha.pacificloon.ca website](https://coha.pacificloon.ca) is to make the data entry easier 
+The main goal of the [coha.pacificloon.ca website](https://coha.pacificloon.ca) is to make data entry easier 
 for participants. 
 The web form is intended to be used from a cellphone or tablet in the field to 
 record observations as they are made.  The website will automatically get location data from the participant's cell 
@@ -23,8 +23,10 @@ the coha.pacificloon.ca website is intended to replace.
    - the quadrat will also be saved in your browser.  You will only need to change it if you survey more than one quadrat.
 5. Select the station (1-16)
    - other fields will be disabled until the station is selected
+   - selecting the station will automatically set the latitude and longitude.  
+     - use the "Update Location" button near the map to update the latitude and longitude with the current GPS coordinates
+     - you can manually enter latitude and longitude values if you wish.  *WARNING: manually entered values will be overwritten if you change the station or press "Update Location"*
 6. Select appropriate values for cloud cover, wind speed and noise at this station 
-   - the browser will automatically fill in your current location (latituded and longitude) once you have entered values for all three conditions
 7. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
    1. the "Start Survey" button automates the audio part of the survey protocol
       1. pushing the button starts a two minute timer.  
@@ -40,8 +42,8 @@ the coha.pacificloon.ca website is intended to replace.
    4. Press the "Save Observation" button to save your observation.
       - **NOTE: your data will be lost if you don't press "Save Observation"!**
 8. Go to the next station and repeat steps 5-7 until you have surveyed the entire quadrat
-   - **NOTE: the location is set when you select the station**, so don't select the station until you have arrived in the location where you plan to observe.
-   - If you need to reset your location, pick a different station, then pick the correct station again.
+   - **NOTE: the location is set when you select the station**, so select the station after you have arrived in the location where you plan to observe.
+   - If you need to reset your location before saving, use the "Update Location" button
 
 ## iPhone Users
 
@@ -54,22 +56,22 @@ the coha.pacificloon.ca website is intended to replace.
    - the quadrat will also be saved in your browser.  You will only need to change it if you survey more than one quadrat.
 5. Select the station (1-16)
    - other fields will be disabled until the station is selected
-   - you can use the map at the bottom of the web page to help you pick the correct station
+   - selecting the station will automatically set the latitude and longitude.  
+     - use the "Update Location" button near the map to update the latitude and longitude with the current GPS coordinates
+     - you can manually enter latitude and longitude values if you wish.  *WARNING: manually entered values will be overwritten if you change the station or press "Update Location"*
 6. Select appropriate values for cloud cover, wind speed and noise at this station 
-   - the browser will automatically fill in your current location (latituded and longitude) once you have entered values for all three conditions
 7. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
    1. Remember: stop playing audio at a station and record your detection as soon as you see or hear a COHA.  We don't want to drive them off their nest.
    2. Push the button to start the two minute timer 
    3. Look and listen for signs of COHA
    4. after two minutes if no COHA has been detected, use the audio playback control to play the COHA call for 20 seconds
    5. When the call playback finishes, start the 40s timer and look and listen for signs of COHA
-   6. repeat the preceding steps three times (i.e. 3 cycles of play call for 20s, observe for 40s)
+   6. repeat the preceding steps three times (i.e. 3 cycles of play call for 20s / observe for 40s)
    7. After the 3rd playback/observe cycle, start the 2 minute timer and observe for two more minutes
    8. record whether you observed a COHA, adding details if yes.
    9. optionally add notes in the Notes field
-   10. press the "Save Observation" button to save your results.  
-       - ** your observation will be lost if you don't do this step **
-ndicate its direction (0-360 degrees from North) and distance in metres from your location.
+   10. press the "**Save Observation**" button to save your results.  
+       - **Your observation will be lost if you don't do this step**
 
 8. Go to the next station and repeat steps 5-7 until you have surveyed the entire quadrat
    - **NOTE: the location is set when you select the station**, so don't select the station until you have arrived in the location where you plan to observe.
