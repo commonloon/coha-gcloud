@@ -9,7 +9,8 @@
 </head>
 <body>
 <script>
-    var yearly_data = JSON.parse( '{{ yearly_data | tojson | safe }}')
+    var raw = '{{ yearly_data | tojson | safe }}';
+    var yearly_data = JSON.parse( raw );
 </script>
     <h1>COHA survey points for selected year</h1>
     <h2>A purple bar at the base of a marker indicates direction and distance to a detection.</h2>

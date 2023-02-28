@@ -5,7 +5,7 @@ participants in the annual
 [WildResearch 
 Cooper's Hawk in the City survey](https://wildresearch.ca/programs/raptor-monitoring/).
 
-The app accepts the data requested the 
+The app accepts the same data requested in the 
 [survey form](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-DataForm_v2.pdf)
 and saves the data to a web bucket in Google Cloud Storage.
 

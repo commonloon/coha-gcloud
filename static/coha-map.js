@@ -26,6 +26,10 @@ function show_year() {
   for (; i < data.length; ++i) {
     let row = data[i];
     const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};
+    if (isNaN(pos.lat) || isNaN(pos.lng)) {
+      // skip points with no coordinates
+      continue;
+    }
     let m = new google.maps.Marker({
       position: pos,
       map: map,
@@ -35,6 +39,7 @@ function show_year() {
     if (row.detection === "yes" || row.detection === "Y") {
       let distance = parseFloat(row.distance);
       let bearing = parseInt(row.direction);
+
       if (!isNaN(distance) && ! isNaN(bearing)) {
         distance /= 1000;  // convert m to km
         terminus = llFromDistance(pos.lat, pos.lng, distance, bearing);

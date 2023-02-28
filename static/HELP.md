@@ -109,4 +109,4 @@ Getting an inaccurate position from the web browser is usually a result of prefe
 e.g. you may have turned off location services, denied location permissions to the website or told the browser to only
 show approximate location. 
 
-![map showing current location and nearby stations](https://coha.pacificloon.ca/map_demo.jpg)
+![map showing current location and nearby stations](https://github.com/commonloon/coha-gcloud/blob/main/static/map_demo.jpg?raw=true)
