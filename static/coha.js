@@ -333,12 +333,14 @@ function detectionChanged() {
 
 function detectionTypeChanged() {
     let detectionTypeElement = document.getElementById("detection_type");
+    let ageElement = document.getElementById("age_class");
 
     const detection_type = detectionTypeElement.value;
 
     if (detection_type === "V") {
-        let ageElement = document.getElementById("age_class");
         ageElement.hidden = false;
+    } else {
+        ageElement.hidden = true;
     }
 }
 
