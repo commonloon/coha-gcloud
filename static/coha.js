@@ -307,12 +307,27 @@ function noiseChanged() {
 
 function detectionChanged() {
     let val = document.getElementById("detection").value;
+    let detectionTypeElement = document.getElementById("detection_type");
+    let detectionDistanceElement = document.getElementById("distance");
+    let detectionDirectionElement = document.getElementById("direction");
+    let ageElement = document.getElementById("age_class");
 
     cohaDetected = val === "yes";
     if (cohaDetected) {
-        let detectionTypeElement = document.getElementById("detection_type");
-
         detectionTypeElement.hidden = false;
+        detectionDistanceElement.hidden = false;
+        detectionDirectionElement.hidden = false;
+        if (detectionTypeElement.value === "V") {
+            // this should only happen if someone toggles the detection field after setting the detection type,
+            // but we might as well make sure the edge case works correctly.
+            ageElement.hidden = false;
+        }
+    } else  {
+        // disable detection related fields  in the event someone changes their mind about seeing a COHA
+        detectionTypeElement.hidden = true;
+        detectionDistanceElement.hidden = true;
+        detectionDirectionElement.hidden = true;
+        ageElement.hidden = true;
     }
 }
 
