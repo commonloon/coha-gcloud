@@ -38,7 +38,7 @@ OPTIONAL_FIELDS = ["direction", "distance", "detection_type", "age_class"]
 if __name__ == '__main__':
     #  Get the input file name
     # TODO: get the input file name from the command line
-    input_filename = "2021-Q.csv"
+    input_filename = "2021-manual.csv"
 
     # import the data
     data = []
@@ -66,6 +66,12 @@ if __name__ == '__main__':
     # write the output files
     for row in data:
         filename = "{}.{:02d}.{}.csv".format(row['quadrat'], int(row['station']), row["timestamp"])
+        try:
+            f = open(filename, "w")
+            f.close()
+        except Exception as e:
+            pass
+
         with open(filename, "w") as f:
             try:
                 writer = csv.DictWriter(f, fieldnames=FILE_FIELD_NAMES, extrasaction="ignore")
