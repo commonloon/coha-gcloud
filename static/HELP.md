@@ -26,8 +26,10 @@ the coha.pacificloon.ca website is intended to replace.
    - selecting the station will automatically set the latitude and longitude.  
      - use the "Update Location" button near the map to update the latitude and longitude with the current GPS coordinates
      - you can manually enter latitude and longitude values if you wish.  *WARNING: manually entered values will be overwritten if you change the station or press "Update Location"*
-6. Select appropriate values for cloud cover, wind speed and noise at this station 
-7. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
+6. Turn on your bluetooth speaker
+   * make sure your phone is paired and the volume set to max.
+7. Select appropriate values for cloud cover, wind speed and noise at this station 
+8. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
    1. the "Start Survey" button automates the audio part of the survey protocol
       1. pushing the button starts a two minute timer.  
          1. Use this time to look for hawks in the area
@@ -41,7 +43,7 @@ the coha.pacificloon.ca website is intended to replace.
    3. Optionally add notes to the notes field
    4. Press the "Save Observation" button to save your observation.
       - **NOTE: your data will be lost if you don't press "Save Observation"!**
-8. Go to the next station and repeat steps 5-7 until you have surveyed the entire quadrat
+9. Go to the next station and repeat steps 5-8 until you have surveyed the entire quadrat
    - **NOTE: the location is set when you select the station**, so select the station after you have arrived in the location where you plan to observe.
    - If you need to reset your location before saving, use the "Update Location" button
 
@@ -59,8 +61,10 @@ the coha.pacificloon.ca website is intended to replace.
    - selecting the station will automatically set the latitude and longitude.  
      - use the "Update Location" button near the map to update the latitude and longitude with the current GPS coordinates
      - you can manually enter latitude and longitude values if you wish.  *WARNING: manually entered values will be overwritten if you change the station or press "Update Location"*
-6. Select appropriate values for cloud cover, wind speed and noise at this station 
-7. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
+6. Turn on your bluetooth speaker
+   * make sure your phone is paired and the volume set to max.
+7. Select appropriate values for cloud cover, wind speed and noise at this station 
+8. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
    1. Remember: stop playing audio at a station and record your detection as soon as you see or hear a COHA.  We don't want to drive them off their nest.
    2. Push the button to start the two minute timer 
    3. Look and listen for signs of COHA
@@ -72,7 +76,7 @@ the coha.pacificloon.ca website is intended to replace.
    9. optionally add notes in the Notes field
    10. press the "**Save Observation**" button to save your results.  
        - **Your observation will be lost if you don't do this step**
-8. Go to the next station and repeat steps 5-7 until you have surveyed the entire quadrat
+9. Go to the next station and repeat steps 5-8 until you have surveyed the entire quadrat
    - **NOTE: the location is set when you select the station**, so select the station after you have arrived in the location where you plan to observe.
    - If you need to reset your location before saving, use the "Update Location" button
 

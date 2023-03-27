@@ -8,7 +8,7 @@ import os
 from google.cloud import storage
 
 from flask import Flask
-from flask import render_template, request
+from flask import render_template, request, redirect
 from flaskext.markdown import Markdown
 
 MAPS_API_KEY = os.environ.get("COHA_MAPS_API_KEY")
@@ -446,8 +446,8 @@ def csv_data():
                            yearly_summaries=yearly_summaries)
 
 
-@app.route('/help/')
-def show_help():
+@app.route('/helpmd/')
+def show_help_md():
     """
     Serve the README.md file as HTML.
 
@@ -461,6 +461,16 @@ def show_help():
     with open("static/HELP.md", "r") as f:
         mkd_text = f.read()
     return render_template('help.html', mkd_text=mkd_text)
+
+@app.route('/help/')
+def show_help():
+    """
+    Serve the help file from GitHub
+
+    The Markdown version wasn't rendering correctly from Flask, hence this kludge to just link
+    to the page on GitHub, which renders the markdown correctly.
+    """
+    return redirect('https://github.com/commonloon/coha-gcloud/blob/main/static/HELP.md')
 
 
 if __name__ == '__main__':
