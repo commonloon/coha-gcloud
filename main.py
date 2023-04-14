@@ -141,6 +141,36 @@ def regenerate_data_summaries():
     return data, yearly_data
 
 
+def regenerate_current_year():
+    """
+    Recreate all the data summary CSV files
+    """
+    year = datetime.datetime.now().year
+
+    # gather all the data
+    current_data = get_data(year)
+
+    # read the summary file to get data for other years
+    summary_data = get_summary_data(SUMMARY_FILE_NAME)
+
+    yearly_data = parse_data_by_year(summary_data)
+    yearly_data[str(year)] = current_data
+
+    # now rebuild the complete data set with the updated current year
+    data = []
+    for y in sorted(yearly_data.keys()):
+        data += yearly_data[y]
+
+    # create the summary data file
+    csv_write_to_google_cloud(SUMMARY_FILE_NAME, FILE_FIELD_NAMES, data)
+
+    # now write a new summary file the current year
+    year_file_name = "COHA-data-" + str(year) + ".csv"
+    csv_write_to_google_cloud(year_file_name, FILE_FIELD_NAMES, current_data)
+
+    return data, yearly_data
+
+
 def parse_data_by_year(data):
     """
     Returns the data broken out by year
@@ -396,15 +426,43 @@ def save_data():
                            maps_api_key=MAPS_API_KEY)
 
 
-@app.route('/map/')
-def show_map():
+@app.route('/map-regen-all/')
+def show_map_regen_all():
     """
-    Display a map of the datapoints received for the most recent year
+    Display a map of the datapoints received for the most recent year.
+    Regenerate maps and summary files for all years if any data point is newer than the summary file.
     """
     # regenerate data files if needed
     need_regen = is_there_new_data()
     if need_regen:
         data, yearly_data = regenerate_data_summaries()
+    else:
+        data = get_summary_data()
+        yearly_data = parse_data_by_year(data)
+
+    # Get the current year
+    year = datetime.date.today().year
+
+    # look for files matching the current year.  If none found, look for previous year
+    years = sorted(yearly_data.keys())
+    if year in years:
+        year = years[:-1]
+
+    # Build a structure to pass to the web template.  The template will handle all the map stuff.
+    return render_template('coha-map.html', yearly_data=yearly_data, year=year, years=years, maps_api_key=MAPS_API_KEY)
+
+
+@app.route('/map/')
+def show_map():
+    """
+    Display a map of the datapoints received for the most recent year.
+
+    If a data point is newer than the summary file, first regenerate the data for the current year.
+    """
+    # regenerate data files if needed
+    need_regen = is_there_new_data()
+    if need_regen:
+        data, yearly_data = regenerate_current_year()
     else:
         data = get_summary_data()
         yearly_data = parse_data_by_year(data)
