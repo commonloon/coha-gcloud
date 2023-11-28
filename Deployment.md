@@ -1,14 +1,14 @@
 # Deploying coha-gcloud to Google Cloud Run
 
-I developed the flask app on Linux.  Here's what I remember about what's needed to get the app
-to run correctly on Google Cloud Run. (*I'm Writing this from memory, so I've probably left out
-important details, sorry.*)
+I developed the flask app on Linux, but you should be able to deploy the app from Windows or Mac.
+Here's what I remember about what's needed to get the app to run correctly on Google Cloud Run. 
+(*I'm Writing this from memory, so I've probably left out important details, sorry.*)
 
-TODO: Add links to the appropriate google cloud documentation
+TODO: Add more links to the appropriate google cloud documentation
 
-1. Install the google cloud command line tool
+1. Install the [google cloud command line tool](https://cloud.google.com/sdk/docs/install)
 2. Authenticate the tool to the google account you want to use for the deployment
-3. In the google cloud management console, reate a project to host the service.  I named my project "wildresearch-coha"
+3. In the google cloud management console, create a project to host the service.  I named my project "wildresearch-coha"
 4. Create a cloud storage bucket to hold the data
    - I named my bucket coha-data.  You may have to use a different name: if so, you will need to change the value of STORAGE_BUCKET_NAME in main.py
    - configure the bucket to be publicly accessible.  The /data endpoint uses this public access to let users download data files.
@@ -27,16 +27,16 @@ TODO: Add links to the appropriate google cloud documentation
       - Get whoever administers DNS for the domain to create a CNAME record that maps the desired hostname to ghs.google.com
         - e.g. coha.pacificloon.ca. 3600 IN CNAME ghs.googlehosted.com.
       - Use Cloud Run Domain Mappings to map the desired domain to the google cloud run service
-8. Create a google maps API key
-   - restrict the API key to required your custom domain as the referrer
-   - restrict the API key to just the required Maps APIs.  You may need to enable the APIs on your project.
+8. Create a [google maps API key](https://developers.google.com/maps/documentation/javascript/get-api-key).  The map won't work without one.
+   - restrict the API key to require your custom domain as the referrer
+   - restrict the API key to just the required Maps APIs.  You may need to [enable the APIs on your project](https://cloud.google.com/apis/docs/getting-started).
      - Distance Matrix API 
      - Geocoding API 
-     - Geolocation API 
+     - Geolocation API  *probably need this one*
      - Maps Embed API 
-     - **Maps JavaScript API** *this might be the only API you need*  
+     - **Maps JavaScript API** *essential, might be the only API you need to enable*  
      - Maps Static API
-9. Put the Maps API key into an environment variable for your coha-gcloud service
+9. Put the Maps API key into an [environment variable](https://cloud.google.com/functions/docs/configuring/env-var) for your coha-gcloud service
 10. Deploy the app again and confirm that the environment variable exists in the latest revision
     - gcloud run deploy --source .
 11. Test the app to make sure it serves pages and saves data
