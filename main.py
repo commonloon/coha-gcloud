@@ -324,6 +324,10 @@ def save_data():
     handle the submitted data for a single station
     :return:
     """
+    # TODO: make stripping the notes field work better in a unicode world
+    ASCII_MAP = dict.fromkeys(range(32))
+    for key in ASCII_MAP.keys():
+        ASCII_MAP[key] = '^'  # map all control characters to the carat symbol
     ok_to_save = True
     bad = "bad value"
     timestamp = datetime.datetime.now(tz=pytz.timezone("Canada/Pacific")).strftime("%Y-%m-%d.%H-%M-%S")
@@ -389,7 +393,8 @@ def save_data():
     fields["cloud"] = fields["cloud"] if fields["cloud"] in cloudValues else bad
     fields["wind"] = fields["wind"] if fields["wind"] in windValues else bad
     fields["noise"] = fields["noise"] if fields["noise"] in noiseValues else bad
-    fields["notes"] = html.escape(fields["notes"])[:2048]
+    fields["notes"] = fields["notes"].translate(ASCII_MAP)  # strip non-ascii chars from the notes, eg tabs and newlines
+    fields["notes"] = html.escape(fields["notes"])[:2048]   # limit not length and escape HTML.
     fields["detection"] = fields["detection"] if fields["detection"] in ["no", "yes"] else bad
     if "direction" in fields.keys() and fields["direction"] != "":
         fields["direction"] = re.sub("[^0-9]", "", fields["direction"])  # strip non-digits
@@ -445,7 +450,7 @@ def show_map_regen_all():
 
     # look for files matching the current year.  If none found, look for previous year
     years = sorted(yearly_data.keys())
-    if year in years:
+    if year not in years:
         year = years[:-1]
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
@@ -472,7 +477,7 @@ def show_map():
 
     # look for files matching the current year.  If none found, look for previous year
     years = sorted(yearly_data.keys())
-    if year in years:
+    if year not in years:
         year = years[:-1]
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
