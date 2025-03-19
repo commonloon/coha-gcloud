@@ -1,8 +1,8 @@
-
+colorama
 Flask==2.2.2
 Flask-Markdown
 google-cloud-storage
-gunicorn==20.1.0
+gunicorn
 pytz
 ua-parser
 virtualenv
