@@ -15,6 +15,9 @@
     <script src="/coha.js"></script>
 </head>
 <body>
+<!-- Add hidden input for map ID -->
+<input type="hidden" id="map-id-input" value="{{ map_id }}">
+
 <script>
     var iphone = {% if iphone %} true {% else %} false {% endif %};
     var stationCoordinates = JSON.parse( '{{ coords | tojson | safe }}');
@@ -183,11 +186,10 @@
     </div>
     <div id="map"></div>
 
-    <script
-      src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&callback=initMap&v=weekly"
-      defer
-    ></script>
-
+<script
+        src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&callback=initMap&loading=async"
+        async>
+</script>
 </div>
 </div> <!-- container -->
 

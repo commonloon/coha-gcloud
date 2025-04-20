@@ -1,8 +1,8 @@
-
-Flask==2.2.2
-Flask-Markdown
+colorama
+Flask>=2.3.0
+markdown
 google-cloud-storage
-gunicorn==20.1.0
+gunicorn
 pytz
 ua-parser
 virtualenv

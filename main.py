@@ -4,14 +4,17 @@ import datetime
 import pytz
 import csv
 import html
+import io
 import os
 from google.cloud import storage
 
 from flask import Flask
+from flask import jsonify
 from flask import render_template, request, redirect
-from flaskext.markdown import Markdown
+import markdown
 
 MAPS_API_KEY = os.environ.get("COHA_MAPS_API_KEY")
+MAP_ID = os.environ.get("COHA_GOOGLE_MAP_ID")
 
 STORAGE_BUCKET_NAME = "coha-data"
 STORAGE_BUCKET_PUBLIC_URL = "https://storage.googleapis.com/" + STORAGE_BUCKET_NAME
@@ -36,8 +39,16 @@ SURVEY_BOUNDS = {
     "east": -122.937837
 }
 
+# Define the main extension set for Markdown
+MARKDOWN_EXTENSIONS = [
+    'markdown.extensions.extra',
+    'markdown.extensions.codehilite',
+    'markdown.extensions.toc',
+    'markdown.extensions.tables',
+    'markdown.extensions.fenced_code',
+]
+
 app = Flask(__name__, template_folder="templates", static_folder='static', static_url_path='')
-Markdown(app)
 
 unselected: str = "not selected"
 quadrats = list(string.ascii_uppercase)[:24]    # 24 Quadrats named A-X
@@ -48,6 +59,38 @@ noiseValues = [str(i) for i in range(0, 4, 1)]  # valid values are 0-3
 quadrats.insert(0, unselected)
 stations.insert(0, unselected)
 
+# Add project ID environment variable
+GCP_PROJECT_ID = os.environ.get("COHA_GCP_PROJECT_ID")
+
+def get_storage_client():
+    """
+    Create and return a Google Cloud Storage client.
+    Works in both deployed Cloud environment and local development.
+    """
+    try:
+        # First attempt: Use explicit project ID if provided
+        if GCP_PROJECT_ID:
+            return storage.Client(project=GCP_PROJECT_ID)
+
+        # Second attempt: Try to use application default credentials
+        try:
+            return storage.Client()
+        except Exception as inner_e:
+            print(f"Could not create client with default credentials: {inner_e}")
+
+        # Third attempt: Check for service account key file
+        key_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+        if key_path and os.path.exists(key_path):
+            return storage.Client.from_service_account_json(key_path)
+
+        # Last resort for local development
+        print("Warning: Using anonymous client - limited functionality")
+        return storage.Client.create_anonymous_client()
+
+    except Exception as e:
+        print(f"Error creating storage client: {e}")
+        # Return anonymous client as last resort
+        return storage.Client.create_anonymous_client()
 
 def csv_write_to_google_cloud(filename, columns, data):
     """
@@ -55,7 +98,7 @@ def csv_write_to_google_cloud(filename, columns, data):
     columns: list of column names in the order you would like them written
     data: array of dicts to write
     """
-    storage_client = storage.Client()
+    storage_client = get_storage_client()
     bucket_name = STORAGE_BUCKET_NAME
     try:
         # first try to read from an existing bucket
@@ -91,7 +134,7 @@ def is_there_new_data():
     """
     Returns true if any object in the bucket has a newer timestamp than SUMMARY_FILE_NAME
     """
-    storage_client = storage.Client()
+    storage_client = get_storage_client()
     bucket_name = STORAGE_BUCKET_NAME
     # first try to read from an existing bucket
     bucket = storage_client.get_bucket(bucket_name)
@@ -192,7 +235,7 @@ def get_data(year=None):
 
     """
     data = []
-    storage_client = storage.Client()
+    storage_client = get_storage_client()
     bucket_name = STORAGE_BUCKET_NAME
     # first try to read from an existing bucket
     bucket = storage_client.get_bucket(bucket_name)
@@ -236,7 +279,7 @@ def get_summary_data(summary_file=SUMMARY_FILE_NAME):
     This should be faster than having to read all observation files.
     """
     data = []
-    storage_client = storage.Client()
+    storage_client = get_storage_client()
     bucket_name = STORAGE_BUCKET_NAME
     # first try to read from an existing bucket
     bucket = storage_client.get_bucket(bucket_name)
@@ -303,6 +346,12 @@ def is_iphone():
     agent = str(request.headers.get("user-agent"))
     return re.search('iPhone', agent) is not None
 
+def load_yearly_data():
+    """
+    Load and prepare data for the map endpoint
+    """
+    data = get_summary_data()
+    return parse_data_by_year(data)
 
 @app.route('/')
 def collect_data():  # put application's code here
@@ -315,7 +364,8 @@ def collect_data():  # put application's code here
     return render_template('coha-ui.html',
                            observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
                            quadrats=quadrats, stations=stations, coords=load_station_coords(),
-                           maps_api_key=MAPS_API_KEY)
+                           maps_api_key=MAPS_API_KEY,
+                           map_id=MAP_ID)
 
 
 @app.route('/save/', methods=['GET', 'POST'])
@@ -428,7 +478,8 @@ def save_data():
     return render_template('coha-ui.html',
                            observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
                            quadrats=quadrats, stations=stations, coords=load_station_coords(),
-                           maps_api_key=MAPS_API_KEY)
+                           maps_api_key=MAPS_API_KEY,
+                           map_id=MAP_ID)
 
 
 @app.route('/map-regen-all/')
@@ -450,11 +501,16 @@ def show_map_regen_all():
 
     # look for files matching the current year.  If none found, look for previous year
     years = sorted(yearly_data.keys())
-    if year not in years:
+    if str(year) not in years:
         year = years[:-1]
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
-    return render_template('coha-map.html', yearly_data=yearly_data, year=year, years=years, maps_api_key=MAPS_API_KEY)
+    return render_template('coha-map.html',
+                           yearly_data=yearly_data,
+                           year=year,
+                           years=years,
+                           maps_api_key=MAPS_API_KEY,
+                           map_id=MAP_ID)
 
 
 @app.route('/map/')
@@ -477,12 +533,30 @@ def show_map():
 
     # look for files matching the current year.  If none found, look for previous year
     years = sorted(yearly_data.keys())
-    if year not in years:
+    if str(year) not in years:
         year = years[:-1]
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
-    return render_template('coha-map.html', yearly_data=yearly_data, year=year, years=years, maps_api_key=MAPS_API_KEY)
+    return render_template('coha-map.html',
+                           yearly_data=yearly_data,
+                           year=year,
+                           years=years,
+                           maps_api_key=MAPS_API_KEY,
+                           map_id=MAP_ID)
 
+
+@app.route('/map/data')
+def map_data():
+    """
+    Return map data as JSON for client-side rendering
+    """
+    try:
+        data = get_summary_data()
+        yearly_data = parse_data_by_year(data)
+        return jsonify(yearly_data)  # Return complete data
+    except Exception as e:
+        print(f"Error in map_data: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/data/')
 def csv_data():
@@ -521,9 +595,12 @@ def show_help_md():
     # This is awkward, but we need the README.md file to be in the root directory for github
     # and we don't want to maintain two copies.  I could try adding a symlink in my local workspace, but
     # that would have to be repeated whenever the repo is cloned to a new machine and won't work on Windows.
-    with open("static/HELP.md", "r") as f:
-        mkd_text = f.read()
-    return render_template('help.html', mkd_text=mkd_text)
+
+    with open("static/HELP.md", 'r', encoding='utf-8') as f:
+        md_content = f.read()
+    html_content = markdown.markdown(md_content, extensions=MARKDOWN_EXTENSIONS)
+
+    return render_template('help.html', mkd_text=html_content)
 
 @app.route('/help/')
 def show_help():
