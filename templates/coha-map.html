@@ -3,29 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <title>Map of {{ year }} COHA data</title>
-    <script src="/coha-map.js"></script>
     <link rel="stylesheet" type="text/css" href="/map-style.css" />
-
 </head>
 <body>
-<script>
-    var raw = '{{ yearly_data | tojson | safe }}';
-    var yearly_data = JSON.parse( raw );
-</script>
+    <!-- Add this hidden input element to store the map ID -->
+    <input type="hidden" id="map-id-input" value="{{ map_id }}">
+
     <h1>COHA survey points for selected year</h1>
     <h2>A purple bar at the base of a marker indicates direction and distance to a detection.</h2>
-<form>
-    <select id="select_year" name="select_year" onchange="show_year()">
-    {% for year in years %}
-        <option value="{{ year }}">{{ year }}</option>
-    {% endfor %}
-    </select>
-</form>
+    <form>
+        <select id="select_year" name="select_year" onchange="show_year()">
+        {% for year in years %}
+            <option value="{{ year }}" {% if year == year|string %}selected{% endif %}>{{ year }}</option>
+        {% endfor %}
+        </select>
+    </form>
     <div id="map"></div>
 
+    <!-- Load the JavaScript after HTML elements are defined -->
+    <script src="/coha-map.js"></script>
+
+    <!-- Use loading=async attribute -->
     <script
-      src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&callback=initMap&v=weekly"
-      defer
+      src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&callback=initMap&v=weekly&loading=async"
+      async
     ></script>
 </body>
 </html>

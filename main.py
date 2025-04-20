@@ -14,6 +14,7 @@ from flask import render_template, request, redirect
 import markdown
 
 MAPS_API_KEY = os.environ.get("COHA_MAPS_API_KEY")
+MAP_ID = os.environ.get("COHA_GOOGLE_MAP_ID")
 
 STORAGE_BUCKET_NAME = "coha-data"
 STORAGE_BUCKET_PUBLIC_URL = "https://storage.googleapis.com/" + STORAGE_BUCKET_NAME
@@ -502,7 +503,12 @@ def show_map_regen_all():
         year = years[:-1]
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
-    return render_template('coha-map.html', yearly_data=yearly_data, year=year, years=years, maps_api_key=MAPS_API_KEY)
+    return render_template('coha-map.html',
+                           yearly_data=yearly_data,
+                           year=year,
+                           years=years,
+                           maps_api_key=MAPS_API_KEY,
+                           map_id=MAP_ID)
 
 
 @app.route('/map/')
@@ -529,7 +535,12 @@ def show_map():
         year = years[:-1]
 
     # Build a structure to pass to the web template.  The template will handle all the map stuff.
-    return render_template('coha-map.html', yearly_data=yearly_data, year=year, years=years, maps_api_key=MAPS_API_KEY)
+    return render_template('coha-map.html',
+                           yearly_data=yearly_data,
+                           year=year,
+                           years=years,
+                           maps_api_key=MAPS_API_KEY,
+                           map_id=MAP_ID)
 
 
 @app.route('/map/data')
@@ -540,26 +551,7 @@ def map_data():
     try:
         data = get_summary_data()
         yearly_data = parse_data_by_year(data)
-
-        # Convert to a format suitable for JSON serialization
-        result = {}
-        for year, year_data in yearly_data.items():
-            result[year] = []
-            for entry in year_data:
-                # Filter to include only necessary fields for map markers
-                marker = {
-                    "latitude": entry.get("latitude", ""),
-                    "longitude": entry.get("longitude", ""),
-                    "quadrat": entry.get("quadrat", ""),
-                    "station": entry.get("station", ""),
-                    "detection": entry.get("detection", ""),
-                    "timestamp": entry.get("timestamp", ""),
-                    "direction": entry.get("direction", ""),  # Add these fields
-                    "distance": entry.get("distance", "")
-                }
-                result[year].append(marker)
-
-        return jsonify(result)
+        return jsonify(yearly_data)  # Return complete data
     except Exception as e:
         print(f"Error in map_data: {e}")
         return jsonify({"error": str(e)}), 500
