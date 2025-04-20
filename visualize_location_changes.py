@@ -7,13 +7,26 @@ import math
 import sys
 import re
 import json
+import logging
+import webbrowser
 from datetime import datetime
+
+# Set up logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # File path relative to the script
 CSV_FILE_PATH = "static/COHA-Station-Coordinates-v1.csv"
 
 # Change this to your Google Maps API key if not using environment variable
 GOOGLE_MAPS_API_KEY = ""  # Will be set from environment variable
+
+# Grid corners provided by the user
+NW_CORNER = (49.263732, -123.157839)  # Northwest corner of quadrat A
+SE_CORNER = (49.209817, -122.938138)  # Southeast corner of quadrat X
+
+# Grid dimensions
+GRID_ROWS = 3  # Number of rows (A-Q-I, etc.)
+GRID_COLS = 8  # Number of columns (A-B-C-D-E-F-G-H, etc.)
 
 
 def haversine_distance(lat1, lon1, lat2, lon2):
@@ -42,7 +55,7 @@ def get_file_content_at_commit(commit_hash, relative_path):
             universal_newlines=True
         )
     except subprocess.CalledProcessError as e:
-        print(f"Error getting file content at commit {commit_hash}: {e}")
+        logging.error(f"Error getting file content at commit {commit_hash}: {e}")
         sys.exit(1)
 
 
@@ -55,7 +68,7 @@ def get_git_commits(file_path):
             universal_newlines=True
         ).strip().split("\n")
     except subprocess.CalledProcessError as e:
-        print(f"Error getting git log: {e}")
+        logging.error(f"Error getting git log: {e}")
         sys.exit(1)
 
 
@@ -65,25 +78,40 @@ def get_versions_to_compare():
     - If filesystem differs from latest commit, compare filesystem to latest commit
     - If filesystem matches latest commit, compare latest commit to previous commit
     """
+    logging.info("Determining versions to compare...")
+
     # Get the current directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
     file_path = os.path.join(script_dir, CSV_FILE_PATH)
 
+    logging.info(f"Looking for file at: {file_path}")
+    if not os.path.exists(file_path):
+        logging.error(f"File not found: {file_path}")
+        sys.exit(1)
+
     # Change to the repository root directory
-    repo_root = subprocess.check_output(
-        ["git", "rev-parse", "--show-toplevel"],
-        universal_newlines=True
-    ).strip()
-    os.chdir(repo_root)
+    try:
+        repo_root = subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"],
+            universal_newlines=True
+        ).strip()
+        logging.info(f"Git repository root: {repo_root}")
+        os.chdir(repo_root)
+    except subprocess.CalledProcessError as e:
+        logging.error(f"Error finding git repository root: {e}")
+        sys.exit(1)
 
     # Get the relative path to the file from the repo root
     relative_path = os.path.relpath(file_path, repo_root)
+    logging.info(f"Relative path: {relative_path}")
 
     # Get the commits
     commits = get_git_commits(relative_path)
     if not commits or commits[0] == "":
-        print(f"Error: No git history found for {file_path}")
+        logging.error(f"Error: No git history found for {file_path}")
         sys.exit(1)
+
+    logging.info(f"Found {len(commits)} commits for this file")
 
     # Get current filesystem content
     with open(file_path, "r") as f:
@@ -96,18 +124,19 @@ def get_versions_to_compare():
     # Compare filesystem content with latest commit
     if current_fs_content != latest_commit_content:
         # Filesystem differs from latest commit
-        print(f"Comparing filesystem version with latest commit {latest_commit[:8]}...")
+        logging.info(f"Comparing filesystem version with latest commit {latest_commit[:8]}...")
         return current_fs_content, latest_commit_content, "filesystem", latest_commit[:8]
     else:
         # Filesystem matches latest commit, compare with previous commit
         if len(commits) < 2:
-            print("Only one commit exists in history. Nothing to compare.")
+            logging.warning("Only one commit exists in history. Nothing to compare.")
             sys.exit(0)
 
         previous_commit = commits[1]
         previous_commit_content = get_file_content_at_commit(previous_commit, relative_path)
 
-        print(f"Filesystem matches latest commit. Comparing commits {latest_commit[:8]} and {previous_commit[:8]}...")
+        logging.info(
+            f"Filesystem matches latest commit. Comparing commits {latest_commit[:8]} and {previous_commit[:8]}...")
         return latest_commit_content, previous_commit_content, latest_commit[:8], previous_commit[:8]
 
 
@@ -137,377 +166,136 @@ def natural_sort_key(key):
     return parts
 
 
-def generate_map_html(changes, lat_col, lon_col, current_label, previous_label):
-    """Generate HTML with Google Maps to visualize location changes"""
+def calculate_quadrat_boundaries():
+    """Calculate the boundaries of all quadrats in the grid"""
+    # Grid dimensions
+    nw_lat, nw_lon = NW_CORNER
+    se_lat, se_lon = SE_CORNER
 
-    # Try to get API key from environment
-    api_key = os.environ.get('GOOGLE_MAPS_API_KEY', GOOGLE_MAPS_API_KEY)
-    if not api_key:
-        print("Warning: No Google Maps API key found. Map may not work correctly.")
-        print("Set your API key in the script or use environment variable GOOGLE_MAPS_API_KEY")
+    lat_range = nw_lat - se_lat
+    lon_range = se_lon - nw_lon
 
-    # Prepare data for JavaScript
-    map_data = []
-    center_lat, center_lon = 0, 0
-    count = 0
+    quad_lat_size = lat_range / GRID_ROWS
+    quad_lon_size = lon_range / GRID_COLS
 
-    for key, prev_data, curr_data, distance in changes:
-        count += 1
-        center_lat += float(curr_data[lat_col])
-        center_lon += float(curr_data[lon_col])
+    # Calculate boundaries for each quadrat
+    quadrat_boundaries = {}
 
-        # Color based on distance (red for >50m, yellow for 20-50m, green for <20m)
-        color = "red" if distance > 50 else "yellow" if distance > 20 else "green"
+    for row in range(GRID_ROWS):
+        for col in range(GRID_COLS):
+            # Convert row,col to quadrat letter (A-X)
+            quadrat_index = row * GRID_COLS + col
+            quadrat = chr(65 + quadrat_index)  # 65 is ASCII for 'A'
 
-        map_data.append({
-            "id": key,
-            "prev": {
-                "lat": float(prev_data[lat_col]),
-                "lng": float(prev_data[lon_col])
-            },
-            "curr": {
-                "lat": float(curr_data[lat_col]),
-                "lng": float(curr_data[lon_col])
-            },
-            "distance": distance,
-            "color": color
-        })
+            # Calculate lat/lon boundaries
+            north = nw_lat - (row * quad_lat_size)
+            south = north - quad_lat_size
+            west = nw_lon + (col * quad_lon_size)
+            east = west + quad_lon_size
 
-    # Calculate center of the map (average of current locations)
-    if count > 0:
-        center_lat /= count
-        center_lon /= count
+            quadrat_boundaries[quadrat] = {
+                'north': north,
+                'south': south,
+                'west': west,
+                'east': east
+            }
 
-    # Generate HTML
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    html_filename = f"location_changes_map_{timestamp}.html"
+    return quadrat_boundaries
 
-    html_content = f"""<!DOCTYPE html>
-<html>
-<head>
-    <title>COHA Station Location Changes</title>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        html, body, #map {{ height: 100%; width: 100%; margin: 0; padding: 0; }}
-        #info-panel {{
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            z-index: 1000;
-            background-color: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            max-height: 95%;
-            overflow-y: auto;
-            max-width: 300px;
-        }}
-        .legend {{
-            background-color: white;
-            padding: 10px;
-            border-radius: 5px;
-            box-shadow: 0 0 10px rgba(0,0,0,0.2);
-            margin-bottom: 10px;
-        }}
-        .color-box {{
-            display: inline-block;
-            width: 12px;
-            height: 12px;
-            margin-right: 5px;
-        }}
-        .station-list {{
-            max-height: 400px;
-            overflow-y: auto;
-            margin-top: 10px;
-        }}
-        .station-item {{
-            cursor: pointer;
-            padding: 3px;
-            border-bottom: 1px solid #eee;
-        }}
-        .station-item:hover {{
-            background-color: #f8f8f8;
-        }}
-        .station-item.selected {{
-            background-color: #e8e8e8;
-            font-weight: bold;
-        }}
-    </style>
-</head>
-<body>
-    <div id="info-panel">
-        <h2>Location Changes</h2>
-        <p>Comparing {current_label} vs {previous_label}</p>
 
-        <div class="legend">
-            <h3>Legend</h3>
-            <div><span class="color-box" style="background-color: red;"></span> &gt;50m change</div>
-            <div><span class="color-box" style="background-color: yellow;"></span> 20-50m change</div>
-            <div><span class="color-box" style="background-color: green;"></span> &lt;20m change</div>
-            <div>
-                <svg height="20" width="60">
-                    <line x1="10" y1="10" x2="50" y2="10" style="stroke:black;stroke-width:2" />
-                    <circle cx="10" cy="10" r="4" stroke="black" stroke-width="1" fill="white" />
-                    <circle cx="50" cy="10" r="4" stroke="black" stroke-width="1" fill="gray" />
-                </svg>
-                Direction of change
-            </div>
-        </div>
+def calculate_station_coordinates(quadrat_boundaries):
+    """Calculate ideal coordinates for all stations in all quadrats"""
+    station_coordinates = {}
 
-        <div>
-            <h3>Filter</h3>
-            <select id="filter-distance">
-                <option value="all">All changes</option>
-                <option value="significant">Significant (&gt;50m)</option>
-                <option value="medium">Medium (20-50m)</option>
-                <option value="minor">Minor (&lt;20m)</option>
-            </select>
-            <input type="text" id="search-station" placeholder="Search by ID" style="margin-top: 5px; width: 100%;">
-        </div>
+    for quadrat, bounds in quadrat_boundaries.items():
+        # Divide quadrat into 4x4 grid for stations
+        lat_step = (bounds['north'] - bounds['south']) / 4
+        lon_step = (bounds['east'] - bounds['west']) / 4
 
-        <div class="station-list" id="station-list">
-            <!-- Station list will be populated by JavaScript -->
-        </div>
-    </div>
+        # Calculate coordinates for each station
+        for row in range(4):
+            for col in range(4):
+                # Determine station number using serpentine pattern
+                if row % 2 == 0:  # Rows 0, 2 (numbered 1, 3) - west to east
+                    station_num = (row * 4) + col + 1
+                else:  # Rows 1, 3 (numbered 2, 4) - east to west
+                    station_num = (row * 4) + (4 - col)
 
-    <div id="map"></div>
+                # Calculate station coordinates (center of each cell)
+                lat = bounds['north'] - (row * lat_step) - (lat_step / 2)
+                lon = bounds['west'] + (col * lon_step) + (lon_step / 2)
 
-    <script>
-        // Map data
-        const mapData = {json.dumps(map_data)};
-        let map;
-        let markers = [];
-        let lines = [];
-        let activeInfoWindow = null;
+                station_key = f"{quadrat}/{station_num}"
+                station_coordinates[station_key] = {
+                    'lat': lat,
+                    'lon': lon,
+                    'row': row,
+                    'col': col
+                }
 
-        function initMap() {{
-            map = new google.maps.Map(document.getElementById('map'), {{
-                center: {{ lat: {center_lat}, lng: {center_lon} }},
-                zoom: 12
-            }});
+    return station_coordinates
 
-            renderMarkers(mapData);
-            populateStationList(mapData);
 
-            // Set up event listeners
-            document.getElementById('filter-distance').addEventListener('change', filterStations);
-            document.getElementById('search-station').addEventListener('input', filterStations);
-        }}
-
-        function renderMarkers(data) {{
-            // Clear existing markers and lines
-            clearMapObjects();
-
-            data.forEach(station => {{
-                // Create markers for previous and current locations
-                const prevMarker = new google.maps.Marker({{
-                    position: station.prev,
-                    map: map,
-                    title: `${{station.id}} (Previous)`,
-                    icon: {{
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 5,
-                        fillColor: "white",
-                        fillOpacity: 1,
-                        strokeWeight: 1,
-                        strokeColor: "black"
-                    }}
-                }});
-
-                const currMarker = new google.maps.Marker({{
-                    position: station.curr,
-                    map: map,
-                    title: `${{station.id}} (Current)`,
-                    icon: {{
-                        path: google.maps.SymbolPath.CIRCLE,
-                        scale: 5,
-                        fillColor: "gray",
-                        fillOpacity: 1,
-                        strokeWeight: 1,
-                        strokeColor: "black"
-                    }}
-                }});
-
-                // Create a line between the two points
-                const line = new google.maps.Polyline({{
-                    path: [station.prev, station.curr],
-                    geodesic: true,
-                    strokeColor: station.color,
-                    strokeOpacity: 0.8,
-                    strokeWeight: 2
-                }});
-                line.setMap(map);
-
-                // Add info window
-                const infoContent = `
-                    <div>
-                        <h3>${{station.id}}</h3>
-                        <p>Distance: ${{station.distance.toFixed(2)}} meters</p>
-                        <p>Previous: ${{station.prev.lat.toFixed(6)}}, ${{station.prev.lng.toFixed(6)}}</p>
-                        <p>Current: ${{station.curr.lat.toFixed(6)}}, ${{station.curr.lng.toFixed(6)}}</p>
-                    </div>
-                `;
-
-                const infoWindow = new google.maps.InfoWindow({{
-                    content: infoContent
-                }});
-
-                // Add click event to both markers
-                [prevMarker, currMarker].forEach(marker => {{
-                    marker.addListener('click', () => {{
-                        if (activeInfoWindow) {{
-                            activeInfoWindow.close();
-                        }}
-                        infoWindow.open(map, marker);
-                        activeInfoWindow = infoWindow;
-
-                        // Highlight the station in the list
-                        highlightStationInList(station.id);
-                    }});
-                }});
-
-                // Store markers and lines for later reference
-                markers.push(prevMarker, currMarker);
-                lines.push(line);
-
-                // Add data reference to markers for filtering
-                prevMarker.stationData = station;
-                currMarker.stationData = station;
-                line.stationData = station;
-            }});
-        }}
-
-        function clearMapObjects() {{
-            markers.forEach(marker => marker.setMap(null));
-            lines.forEach(line => line.setMap(null));
-            markers = [];
-            lines = [];
-            if (activeInfoWindow) {{
-                activeInfoWindow.close();
-                activeInfoWindow = null;
-            }}
-        }}
-
-        function populateStationList(data) {{
-            const stationList = document.getElementById('station-list');
-            stationList.innerHTML = '';
-
-            data.sort((a, b) => b.distance - a.distance);
-
-            data.forEach(station => {{
-                const item = document.createElement('div');
-                item.className = 'station-item';
-                item.setAttribute('data-id', station.id);
-                item.setAttribute('data-distance', station.distance);
-
-                const distanceClass = station.distance > 50 ? 'significant' : 
-                                     station.distance > 20 ? 'medium' : 'minor';
-                item.classList.add(distanceClass);
-
-                item.innerHTML = `
-                    <span class="color-box" style="background-color: ${{station.color}};"></span>
-                    ${{station.id}} - ${{station.distance.toFixed(2)}}m
-                `;
-
-                item.addEventListener('click', () => {{
-                    // Center map on this station
-                    map.setCenter(station.curr);
-                    map.setZoom(18);
-
-                    // Open info window
-                    if (activeInfoWindow) {{
-                        activeInfoWindow.close();
-                    }}
-
-                    const infoContent = `
-                        <div>
-                            <h3>${{station.id}}</h3>
-                            <p>Distance: ${{station.distance.toFixed(2)}} meters</p>
-                            <p>Previous: ${{station.prev.lat.toFixed(6)}}, ${{station.prev.lng.toFixed(6)}}</p>
-                            <p>Current: ${{station.curr.lat.toFixed(6)}}, ${{station.curr.lng.toFixed(6)}}</p>
-                        </div>
-                    `;
-
-                    const infoWindow = new google.maps.InfoWindow({{
-                        content: infoContent,
-                        position: station.curr
-                    }});
-
-                    infoWindow.open(map);
-                    activeInfoWindow = infoWindow;
-
-                    // Highlight this item
-                    highlightStationInList(station.id);
-                }});
-
-                stationList.appendChild(item);
-            }});
-        }}
-
-        function highlightStationInList(id) {{
-            // Remove highlight from all stations
-            document.querySelectorAll('.station-item').forEach(item => {{
-                item.classList.remove('selected');
-            }});
-
-            // Add highlight to selected station
-            const selectedItem = document.querySelector(`.station-item[data-id="${{id}}"]`);
-            if (selectedItem) {{
-                selectedItem.classList.add('selected');
-                selectedItem.scrollIntoView({{ behavior: 'smooth', block: 'nearest' }});
-            }}
-        }}
-
-        function filterStations() {{
-            const filterValue = document.getElementById('filter-distance').value;
-            const searchText = document.getElementById('search-station').value.toLowerCase();
-
-            // Filter the data based on criteria
-            const filteredData = mapData.filter(station => {{
-                // Distance filter
-                if (filterValue === 'significant' && station.distance <= 50) return false;
-                if (filterValue === 'medium' && (station.distance <= 20 || station.distance > 50)) return false;
-                if (filterValue === 'minor' && station.distance >= 20) return false;
-
-                // Search filter
-                if (searchText && !station.id.toLowerCase().includes(searchText)) return false;
-
-                return true;
-            }});
-
-            // Update the map and list
-            renderMarkers(filteredData);
-            populateStationList(filteredData);
-        }}
-    </script>
-
-    <script async defer
-        src="https://maps.googleapis.com/maps/api/js?key={api_key}&callback=initMap">
-    </script>
-</body>
-</html>
-"""
-
-    # Write HTML to file
-    with open(html_filename, 'w') as f:
-        f.write(html_content)
-
-    print(f"\nMap visualization created: {html_filename}")
-
-    # Try to open the map in a browser
+def determine_expected_station(lat, lon, quadrat_boundaries):
+    """
+    Determine the expected quadrat and station number for a given coordinate
+    """
     try:
-        import webbrowser
-        webbrowser.open('file://' + os.path.realpath(html_filename))
-    except Exception as e:
-        print(f"Could not automatically open browser: {e}")
-        print(f"Please open the file manually: {os.path.realpath(html_filename)}")
+        lat_float = float(lat)
+        lon_float = float(lon)
+    except (ValueError, TypeError):
+        return None, None
 
-    return html_filename
+    # Find which quadrat contains this point
+    containing_quadrat = None
+    for quadrat, bounds in quadrat_boundaries.items():
+        if (bounds['south'] <= lat_float <= bounds['north'] and
+                bounds['west'] <= lon_float <= bounds['east']):
+            containing_quadrat = quadrat
+            break
+
+    if not containing_quadrat:
+        return None, None
+
+    # Calculate position within the quadrat
+    bounds = quadrat_boundaries[containing_quadrat]
+    lat_pos = (bounds['north'] - lat_float) / (bounds['north'] - bounds['south'])
+    lon_pos = (lon_float - bounds['west']) / (bounds['east'] - bounds['west'])
+
+    # Convert to row, col (0-3)
+    row = min(3, max(0, int(lat_pos * 4)))
+    col = min(3, max(0, int(lon_pos * 4)))
+
+    # Determine station number using serpentine pattern
+    if row % 2 == 0:  # Rows 0, 2 (numbered 1, 3) - west to east
+        station_num = (row * 4) + col + 1
+    else:  # Rows 1, 3 (numbered 2, 4) - east to west
+        station_num = (row * 4) + (4 - col)
+
+    return containing_quadrat, str(station_num)
+
+
+def render_html_template(template_path, output_path, template_data):
+    """Render HTML template with the provided data"""
+    # Read the template file
+    with open(template_path, 'r') as f:
+        template_content = f.read()
+
+    # Substitute all placeholders in the template
+    for key, value in template_data.items():
+        placeholder = f"{{{{ {key} }}}}"
+        template_content = template_content.replace(placeholder, str(value))
+
+    # Write the final HTML
+    with open(output_path, 'w') as f:
+        f.write(template_content)
+
+    return output_path
 
 
 def main():
-    # Get the versions to compare
+    """Main function to process data and create visualization"""
+    # Get versions to compare
     current_content, previous_content, current_label, previous_label = get_versions_to_compare()
 
     # Load the versions
@@ -520,10 +308,16 @@ def main():
     lon_col = next((col.strip() for col in cur_cols if col.strip().lower() in ('lon', 'long', 'longitude')), None)
 
     if not lat_col or not lon_col:
-        print(f"Error: Could not identify latitude/longitude columns. Found: {cur_cols}")
+        logging.error(f"Error: Could not identify latitude/longitude columns. Found: {cur_cols}")
         sys.exit(1)
 
-    print(f"Using columns: '{lat_col}' for latitude and '{lon_col}' for longitude\n")
+    logging.info(f"Using columns: '{lat_col}' for latitude and '{lon_col}' for longitude")
+
+    # Calculate quadrat boundaries and station coordinates
+    quadrat_boundaries = calculate_quadrat_boundaries()
+    station_coordinates = calculate_station_coordinates(quadrat_boundaries)
+    logging.info(
+        f"Calculated boundaries for {len(quadrat_boundaries)} quadrats and coordinates for {len(station_coordinates)} stations")
 
     # Track changes for map visualization
     changes = []
@@ -548,43 +342,146 @@ def main():
                     )
 
                     if distance > 0:
-                        changes.append((key, prev_row, curr_row, distance))
+                        # Determine expected station
+                        quadrat, station = key.split('/')
+                        expected_quadrat, expected_station = determine_expected_station(
+                            curr_row[lat_col], curr_row[lon_col], quadrat_boundaries
+                        )
+
+                        changes.append((key, prev_row, curr_row, distance, expected_quadrat, expected_station))
 
                         # Print significant changes to console
                         if distance > 50:
-                            print(f"{key}: {distance:.2f}m (significant)")
-                        elif distance > 20:
-                            print(f"{key}: {distance:.2f}m (medium)")
+                            expected_info = f" (expected: {expected_quadrat}/{expected_station})" if expected_quadrat and expected_station and (
+                                        expected_quadrat != quadrat or expected_station != station) else ""
+                            logging.info(f"{key}: {distance:.0f}m (significant){expected_info}")
                 except (ValueError, TypeError) as e:
-                    print(f"{key}: Error calculating distance - {e}")
+                    logging.error(f"{key}: Error calculating distance - {e}")
 
-    # Sort changes by distance (largest first)
-    changes.sort(key=lambda x: x[3], reverse=True)
+    # Sort changes by quadrat and then by station naturally
+    changes.sort(key=lambda x: (
+        x[0].split('/')[0],  # Sort by quadrat
+        natural_sort_key(x[0].split('/')[1])  # Then by station naturally
+    ))
 
     # Generate a distribution of changes
-    significant = sum(1 for _, _, _, d in changes if d > 50)
-    medium = sum(1 for _, _, _, d in changes if 20 < d <= 50)
-    minor = sum(1 for _, _, _, d in changes if 0 < d <= 20)
+    significant = sum(1 for _, _, _, d, _, _ in changes if d > 50)
+    medium = sum(1 for _, _, _, d, _, _ in changes if 20 < d <= 50)
+    minor = sum(1 for _, _, _, d, _, _ in changes if 0 < d <= 20)
+
+    # Count mismatches where expected station is different from current
+    mismatches = sum(1 for key, _, _, _, eq, es in changes
+                     if eq and es and (eq != key.split('/')[0] or es != key.split('/')[1]))
 
     # Print summary
-    print(f"\n{'-' * 50}")
-    print(f"Total stations with coordinate changes: {len(changes)}")
-    print(f"  Significant changes (>50m): {significant}")
-    print(f"  Medium changes (20-50m): {medium}")
-    print(f"  Minor changes (<20m): {minor}")
+    logging.info(f"Total stations with coordinate changes: {len(changes)}")
+    logging.info(f"  Significant changes (>50m): {significant}")
+    logging.info(f"  Medium changes (20-50m): {medium}")
+    logging.info(f"  Minor changes (<20m): {minor}")
+    logging.info(f"  Possible station mismatches: {mismatches}")
 
-    # Generate map visualization if there are changes
-    if changes:
-        try:
-            html_file = generate_map_html(changes, lat_col, lon_col, current_label, previous_label)
-            print(f"\nMap visualization created successfully: {html_file}")
-        except Exception as e:
-            print(f"\nError creating map visualization: {e}")
-            import traceback
-            traceback.print_exc()
-    else:
-        print("\nNo changes to visualize on the map.")
+    # Prepare data for template
+    map_data = []
+    center_lat, center_lon = 0, 0
+    count = 0
+
+    for key, prev_data, curr_data, distance, expected_quadrat, expected_station in changes:
+        count += 1
+        center_lat += float(curr_data[lat_col])
+        center_lon += float(curr_data[lon_col])
+
+        # Color based on distance (red for >50m, yellow for 20-50m, green for <20m)
+        color = "red" if distance > 50 else "yellow" if distance > 20 else "green"
+
+        # Extract quadrat and station
+        quadrat, station = key.split('/')
+
+        # Check if there's a station number mismatch
+        has_mismatch = expected_quadrat and expected_station and (
+                expected_quadrat != quadrat or expected_station != station
+        )
+
+        map_data.append({
+            "id": key,
+            "quadrat": quadrat,
+            "station": station,
+            "expectedQuadrat": expected_quadrat,
+            "expectedStation": expected_station,
+            "prev": {
+                "lat": float(prev_data[lat_col]),
+                "lng": float(prev_data[lon_col])
+            },
+            "curr": {
+                "lat": float(curr_data[lat_col]),
+                "lng": float(curr_data[lon_col])
+            },
+            "distance": distance,
+            "color": color,
+            "hasMismatch": has_mismatch
+        })
+
+    # Calculate center of the map (average of current locations)
+    if count > 0:
+        center_lat /= count
+        center_lon /= count
+
+    # Try to get API key from environment
+    api_key = os.environ.get('GOOGLE_MAPS_API_KEY', GOOGLE_MAPS_API_KEY)
+    if not api_key:
+        logging.warning("No Google Maps API key found. Map may not work correctly.")
+        logging.warning("Set your API key in the script or use environment variable GOOGLE_MAPS_API_KEY")
+
+    # Prepare data for the template
+    template_data = {
+        "api_key": api_key,
+        "center_lat": center_lat,
+        "center_lon": center_lon,
+        "current_label": current_label,
+        "previous_label": previous_label,
+        "map_data": json.dumps(map_data),
+        "quadrat_boundaries": json.dumps(quadrat_boundaries),
+        "station_coordinates": json.dumps(station_coordinates)
+    }
+
+    # Generate HTML
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    html_filename = f"location_changes_map_{timestamp}.html"
+
+    # Read the template file - use same directory as script
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    template_dir = os.path.join(script_dir, "templates")
+    template_path = os.path.join(template_dir, "location_changes_template.html")
+
+    # Check if template exists
+    if not os.path.exists(template_path):
+        logging.error(f"Template file not found: {template_path}")
+        logging.error("Please create the template file first.")
+        sys.exit(1)
+
+    # Render the template
+    output_path = os.path.join(os.getcwd(), html_filename)
+    render_html_template(template_path, output_path, template_data)
+
+    logging.info(f"Map visualization created: {html_filename}")
+
+    # Try to open the map in a browser
+    try:
+        webbrowser.open('file://' + os.path.realpath(output_path))
+    except Exception as e:
+        logging.error(f"Could not automatically open browser: {e}")
+        logging.info(f"Please open the file manually: {os.path.realpath(output_path)}")
+
+    return html_filename
 
 
 if __name__ == "__main__":
-    main()
+    # Execute main function
+    try:
+        print("Script starting...")
+        main()
+        print("Script completed successfully")
+    except Exception as e:
+        print(f"Error executing main function: {e}")
+        import traceback
+
+        traceback.print_exc()

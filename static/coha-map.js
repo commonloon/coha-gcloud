@@ -1,28 +1,49 @@
+let yearly_data = {};
 let map;
 let markers = [];
 
 function initMap() {
-  let lat = 49.2366675;
-  let lng = -123.0478035;
-  map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: lat, lng: lng },
-    zoom: 12,
-  });
-  show_year();
-}
+  try {
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: 49.2366675, lng: -123.0478035 },
+      zoom: 12,
+      mapTypeId: "terrain"
+    });
 
-window.initMap = initMap;
+    // Load the data after map initialization
+    fetch('/map/data')
+      .then(response => response.json())
+      .then(data => {
+        yearly_data = data;
+        // Set default year if available
+        const years = Object.keys(yearly_data);
+        if (years.length > 0) {
+          document.getElementById("select_year").value = years[0];
+          show_year();
+        }
+      })
+      .catch(error => {
+        console.error('Error loading map data:', error);
+      });
 
-function clear_markers() {
-  markers.forEach((m) => {m.setMap(null);});
-  markers = [];
+  } catch (error) {
+    console.error("Error initializing map:", error);
+  }
 }
 
 function show_year() {
-  let i=0;
+  let i = 0;
   let year = document.getElementById("select_year").value;
-  let data = yearly_data[year]
+
+  // Check if data exists for the selected year
+  if (!yearly_data || !yearly_data[year]) {
+    console.error('No data available for year:', year);
+    return;
+  }
+
+  let data = yearly_data[year];
   clear_markers();
+
   for (; i < data.length; ++i) {
     let row = data[i];
     const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};
@@ -30,19 +51,21 @@ function show_year() {
       // skip points with no coordinates
       continue;
     }
+
     let m = new google.maps.Marker({
       position: pos,
       map: map,
       title: row.quadrat + ":" + row.station
     });
     markers.push(m);
+
     if (row.detection === "yes" || row.detection === "Y") {
       let distance = parseFloat(row.distance);
       let bearing = parseInt(row.direction);
 
-      if (!isNaN(distance) && ! isNaN(bearing)) {
+      if (!isNaN(distance) && !isNaN(bearing)) {
         distance /= 1000;  // convert m to km
-        terminus = llFromDistance(pos.lat, pos.lng, distance, bearing);
+        let terminus = llFromDistance(pos.lat, pos.lng, distance, bearing);
         let path = [
           {lat: pos.lat, lng: pos.lng},
           {lat: terminus[0], lng: terminus[1]}
@@ -59,6 +82,13 @@ function show_year() {
       }
     }
   }
+}
+
+function clear_markers() {
+  for (let i = 0; i < markers.length; i++) {
+    markers[i].setMap(null);
+  }
+  markers = [];
 }
 
 

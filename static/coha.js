@@ -566,13 +566,25 @@ function startSurvey() {
 ///////////
 let map;
 
+// Replace the current initMap function in coha.js with this one
 function initMap() {
-  let lat = 49.2366675;
-  let lng = -123.0478035;
-  map = new google.maps.Map(document.getElementById("map"), {
-    center: { lat: lat, lng: lng },
-    zoom: 12,
-  });
+  try {
+    let lat = 49.2366675;
+    let lng = -123.0478035;
+    map = new google.maps.Map(document.getElementById("map"), {
+      center: { lat: lat, lng: lng },
+      zoom: 12,
+      mapTypeId: "terrain"
+    });
+
+    // If you already have the quadrat set, show its stations
+    let quadrat = document.getElementById("quadrat").value;
+    if (quadrats.indexOf(quadrat) !== -1 && quadrat !== "Choose") {
+      mapStations(quadrat);
+    }
+  } catch (error) {
+    console.error("Error initializing map:", error);
+  }
 }
 
 window.initMap = initMap;

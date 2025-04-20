@@ -1,6 +1,6 @@
 colorama
-Flask==2.2.2
-Flask-Markdown
+Flask>=2.3.0
+markdown
 google-cloud-storage
 gunicorn
 pytz
