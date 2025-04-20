@@ -36,7 +36,7 @@ TODO: Add more links to the appropriate google cloud documentation
      - Maps Embed API 
      - **Maps JavaScript API** *essential, might be the only API you need to enable*  
      - Maps Static API
-8. Create a Google Maps ID for the map on the /map endpoint.  This is more complicated than one might firet suspect:
+9. Create a Google Maps ID for the map on the /map endpoint.  This is more complicated than one might firet suspect:
    - go to the google cloud console (console.cloud.google.com) and sign in
    - click "View All Products" to bring up the the full list of options
    - search for "Maps"
@@ -50,11 +50,17 @@ TODO: Add more links to the appropriate google cloud documentation
      - Click the Save button
      - get the value of the new map ID
 9. Put the Maps API key into an [environment variable](https://cloud.google.com/functions/docs/configuring/env-var) for your coha-gcloud service
-10. Put the map ID into an environment variable.  The command I used was
+10. Put the map ID into an environment variable.  I haven't figured out how to simply add a new variable, so it seems
+     we need to set all required variables every time. The command I used was
 
         gcloud run services update coha-gcloud \
-        --set-env-vars COHA_GOOGLE_MAP_ID=VALUE_OF_MAP_ID_FROM_GOOGLE,COHA_GCP_PROJECT_ID=wildresearch-coha \
+        --set-env-vars COHA_MAPS_API_KEY=<production maps API key>,COHA_GOOGLE_MAP_ID=VALUE_OF_MAP_ID_FROM_GOOGLE,COHA_GCP_PROJECT_ID=wildresearch-coha \
         --region us-west1
-10. Deploy the app again and confirm that the environment variables exist in the latest revision
-    - gcloud run deploy --source .
+     Make sure you use the production maps API key, not the development one.
+1. Check that the environment looks right
+
+        gcloud run services describe coha-gcloud --region us-west1
+10. Deploy the app again
+
+        gcloud run deploy --source .
 11. Test the app to make sure it serves pages and saves data
