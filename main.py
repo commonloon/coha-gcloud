@@ -364,7 +364,8 @@ def collect_data():  # put application's code here
     return render_template('coha-ui.html',
                            observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
                            quadrats=quadrats, stations=stations, coords=load_station_coords(),
-                           maps_api_key=MAPS_API_KEY)
+                           maps_api_key=MAPS_API_KEY,
+                           map_id=MAP_ID)
 
 
 @app.route('/save/', methods=['GET', 'POST'])
@@ -477,7 +478,8 @@ def save_data():
     return render_template('coha-ui.html',
                            observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
                            quadrats=quadrats, stations=stations, coords=load_station_coords(),
-                           maps_api_key=MAPS_API_KEY)
+                           maps_api_key=MAPS_API_KEY,
+                           map_id=MAP_ID)
 
 
 @app.route('/map-regen-all/')

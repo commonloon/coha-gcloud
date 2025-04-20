@@ -36,7 +36,25 @@ TODO: Add more links to the appropriate google cloud documentation
      - Maps Embed API 
      - **Maps JavaScript API** *essential, might be the only API you need to enable*  
      - Maps Static API
+8. Create a Google Maps ID for the map on the /map endpoint.  This is more complicated than one might firet suspect:
+   - go to the google cloud console (console.cloud.google.com) and sign in
+   - click "View All Products" to bring up the the full list of options
+   - search for "Maps"
+   - click on "Google Maps Platform"
+   - click on "Map Management"
+   - click "Create map ID"
+     - the name and description don't matter much: pick something that will remind you later what the map is for
+     - Select "JavaScript" for the Map type.
+       - Choose "Vector" (probably defaults to Raster, but we want Vector)
+       - do NOT tick the "Tilt" or "Rotation" boxes
+     - Click the Save button
+     - get the value of the new map ID
 9. Put the Maps API key into an [environment variable](https://cloud.google.com/functions/docs/configuring/env-var) for your coha-gcloud service
-10. Deploy the app again and confirm that the environment variable exists in the latest revision
+10. Put the map ID into an environment variable.  The command I used was
+
+        gcloud run services update coha-gcloud \
+        --set-env-vars COHA_GOOGLE_MAP_ID=VALUE_OF_MAP_ID_FROM_GOOGLE,COHA_GCP_PROJECT_ID=wildresearch-coha \
+        --region us-west1
+10. Deploy the app again and confirm that the environment variables exist in the latest revision
     - gcloud run deploy --source .
 11. Test the app to make sure it serves pages and saves data

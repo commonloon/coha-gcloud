@@ -19,6 +19,7 @@ var surveyBounds = {
 // We need to keep a record of google maps markers so we can erase them
 var mapMarkers = [];
 var positionMarker = null;
+var positionCircle = null; // Track the user's position circle
 
 // initialize the quadrat boundaries if quadrat is set by cookie
 window.onload = () => {
@@ -114,28 +115,107 @@ function observersChanged() {
     }
 }
 
+// Store references to the marker libraries when loaded
+let markerLibraries = {
+    loaded: false,
+    AdvancedMarkerElement: null,
+    PinElement: null
+};
+
+// Load the marker libraries
+async function loadMarkerLibraries() {
+    if (!markerLibraries.loaded) {
+        try {
+            // Import the marker library
+            const markerLibrary = await google.maps.importLibrary("marker");
+            markerLibraries.AdvancedMarkerElement = markerLibrary.AdvancedMarkerElement;
+            markerLibraries.PinElement = markerLibrary.PinElement;
+            markerLibraries.loaded = true;
+            console.log("Marker libraries loaded successfully");
+        } catch (error) {
+            console.error("Error loading marker libraries:", error);
+            markerLibraries.loaded = false;
+        }
+    }
+    return markerLibraries.loaded;
+}
+
 // put an individual station marker on the map
-function stationMarker(row, station, quadrat) {
+async function stationMarker(row, station, quadrat) {
     const pos = {lat: parseFloat(row.latitude), lng: parseFloat(row.longitude)};
     const title = quadrat + ":" + station.toString();
-    const marker = new google.maps.Marker({
-        position: pos,
-        map: map,
-        title: title,
-        label: station.toString()
-    });
-    mapMarkers.push(marker);
-    const c = new google.maps.Circle({
-      strokeColor: "#FF0000",
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: "#FFFF00",
-      fillOpacity: 0.35,
-      map,
-      center: pos,
-      radius: 250,
-    });
-    mapMarkers.push(c);
+
+    try {
+        // Make sure marker libraries are loaded
+        const librariesLoaded = await loadMarkerLibraries();
+
+        if (librariesLoaded && markerLibraries.AdvancedMarkerElement && markerLibraries.PinElement) {
+            // Create a pin for the station
+            const pin = new markerLibraries.PinElement({
+                glyph: station.toString(),
+                glyphColor: "#000000",
+                background: "#FFFF00",
+                borderColor: "#FF0000"
+            });
+
+            // Create the advanced marker with the pin
+            const marker = new markerLibraries.AdvancedMarkerElement({
+                position: pos,
+                map: map,
+                title: title,
+                content: pin.element // Use pin.element, not just pin
+            });
+
+            mapMarkers.push(marker);
+
+            // Create the circle
+            const c = new google.maps.Circle({
+                strokeColor: "#FF0000",
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: "#FFFF00",
+                fillOpacity: 0.35,
+                map,
+                center: pos,
+                radius: 250,
+            });
+            mapMarkers.push(c);
+        } else {
+            // Fallback to standard marker if libraries aren't loaded properly
+            fallbackToStandardMarker(pos, title, station.toString());
+        }
+    } catch (error) {
+        console.error("Error creating advanced marker:", error);
+        // Fallback to standard marker
+        fallbackToStandardMarker(pos, title, station.toString());
+    }
+}
+
+// Fallback function to use standard markers
+function fallbackToStandardMarker(position, title, label) {
+    try {
+        const marker = new google.maps.Marker({
+            position: position,
+            map: map,
+            title: title,
+            label: label
+        });
+        mapMarkers.push(marker);
+
+        const c = new google.maps.Circle({
+            strokeColor: "#FF0000",
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: "#FFFF00",
+            fillOpacity: 0.35,
+            map,
+            center: position,
+            radius: 250,
+        });
+        mapMarkers.push(c);
+    } catch (error) {
+        console.error("Error creating fallback marker:", error);
+    }
 }
 
 // mark all stations of a quadrat on the map
@@ -167,33 +247,97 @@ function quadratChanged() {
     } else {
         document.cookie = 'quadrat=Choose';
     }
-
 }
 
-function mapMarker(latitude, longitude, label) {
+async function mapMarker(latitude, longitude, label) {
     const pos = {lat: parseFloat(latitude), lng: parseFloat(longitude)};
-    const marker = new google.maps.Marker({
-        position: pos,
-        map: map,
-        title: label,
-        label: "YOU"
-    });
-    if (positionMarker != null) {
-        // clear the old marker
-        positionMarker.setMap(null);
+
+    try {
+        // Clear any existing position marker and circle
+        if (positionMarker != null) {
+            positionMarker.setMap(null);
+            positionMarker = null;
+        }
+
+        if (positionCircle != null) {
+            positionCircle.setMap(null);
+            positionCircle = null;
+        }
+
+        // Make sure marker libraries are loaded
+        const librariesLoaded = await loadMarkerLibraries();
+
+        if (librariesLoaded && markerLibraries.AdvancedMarkerElement && markerLibraries.PinElement) {
+            // Create a pin for the user position
+            const pin = new markerLibraries.PinElement({
+                glyph: "YOU",
+                glyphColor: "#FFFFFF",
+                background: "#0000FF",
+                borderColor: "#000000",
+                scale: 1.3
+            });
+
+            // Create the advanced marker with the pin
+            positionMarker = new markerLibraries.AdvancedMarkerElement({
+                position: pos,
+                map: map,
+                title: label,
+                content: pin.element // Use pin.element, not just pin
+            });
+
+            // Create the circle for position accuracy
+            positionCircle = new google.maps.Circle({
+                strokeColor: "#0000FF",
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: "#00FFFF",
+                fillOpacity: 0.35,
+                map,
+                center: pos,
+                radius: 400,
+            });
+        } else {
+            // Fallback to standard marker if libraries aren't loaded properly
+            positionMarker = new google.maps.Marker({
+                position: pos,
+                map: map,
+                title: label,
+                label: "YOU"
+            });
+
+            positionCircle = new google.maps.Circle({
+                strokeColor: "#0000FF",
+                strokeOpacity: 0.8,
+                strokeWeight: 2,
+                fillColor: "#00FFFF",
+                fillOpacity: 0.35,
+                map,
+                center: pos,
+                radius: 400,
+            });
+        }
+    } catch (error) {
+        console.error("Error creating position marker:", error);
+
+        // Fallback to standard marker if advanced marker creation fails
+        positionMarker = new google.maps.Marker({
+            position: pos,
+            map: map,
+            title: label,
+            label: "YOU"
+        });
+
+        positionCircle = new google.maps.Circle({
+            strokeColor: "#0000FF",
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: "#00FFFF",
+            fillOpacity: 0.35,
+            map,
+            center: pos,
+            radius: 400,
+        });
     }
-    positionMarker = marker;
-    const c = new google.maps.Circle({
-      strokeColor: "#0000FF",
-      strokeOpacity: 0.8,
-      strokeWeight: 2,
-      fillColor: "#00FFFF",
-      fillOpacity: 0.35,
-      map,
-      center: pos,
-      radius: 400,
-    });
-    mapMarkers.push(c);
 }
 
 function distanceFromStation(quadrat, station, lat, long, nominalLocation) {
@@ -566,16 +710,30 @@ function startSurvey() {
 ///////////
 let map;
 
-// Replace the current initMap function in coha.js with this one
-function initMap() {
+// Initialize the map
+async function initMap() {
   try {
+    // Get the map ID from the hidden input
+    const mapIdElement = document.getElementById('map-id-input');
+    const mapId = mapIdElement ? mapIdElement.value : '';
+
+    // Import the maps library
+    const { Map } = await google.maps.importLibrary("maps");
+
+    // Initial location
     let lat = 49.2366675;
     let lng = -123.0478035;
-    map = new google.maps.Map(document.getElementById("map"), {
+
+    // Create the map with modern syntax
+    map = new Map(document.getElementById("map"), {
       center: { lat: lat, lng: lng },
       zoom: 12,
-      mapTypeId: "terrain"
+      mapTypeId: "terrain",
+      ...(mapId ? { mapId: mapId } : {})  // Add mapId if it exists
     });
+
+    // Preload the marker libraries for later use
+    await loadMarkerLibraries();
 
     // If you already have the quadrat set, show its stations
     let quadrat = document.getElementById("quadrat").value;
@@ -583,12 +741,28 @@ function initMap() {
       mapStations(quadrat);
     }
   } catch (error) {
-    console.error("Error initializing map:", error);
+    console.error("Error initializing map with modern API:", error);
+
+    // Fallback to standard map initialization if the new method fails
+    try {
+      let lat = 49.2366675;
+      let lng = -123.0478035;
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: { lat: lat, lng: lng },
+        zoom: 12,
+        mapTypeId: "terrain"
+      });
+
+      // If you already have the quadrat set, show its stations
+      let quadrat = document.getElementById("quadrat").value;
+      if (quadrats.indexOf(quadrat) !== -1 && quadrat !== "Choose") {
+        mapStations(quadrat);
+      }
+    } catch (fallbackError) {
+      console.error("Fallback map initialization failed:", fallbackError);
+    }
   }
 }
 
+// Ensure window.initMap points to our function
 window.initMap = initMap;
-
-
-
-
