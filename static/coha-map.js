@@ -46,9 +46,10 @@ async function initMap() {
 
 // Define show_year as async so we can use await
 async function show_year() {
+  let year;
   try {
     let i = 0;
-    let year = document.getElementById("select_year").value;
+    year = document.getElementById("select_year").value;
 
     // Check if data exists for the selected year
     if (!yearly_data || !yearly_data[year]) {

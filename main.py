@@ -6,17 +6,18 @@ import csv
 import html
 import io
 import os
+from functools import wraps
 from google.cloud import storage
+from google.api_core.exceptions import PreconditionFailed
 
-from flask import Flask
-from flask import jsonify
-from flask import render_template, request, redirect
+from flask import Flask, jsonify, render_template, request, redirect, Response
 import markdown
 
 MAPS_API_KEY = os.environ.get("COHA_MAPS_API_KEY")
 MAP_ID = os.environ.get("COHA_GOOGLE_MAP_ID")
+ADMIN_PASSWORD = os.environ.get("COHA_ADMIN_PASSWORD", "")
 
-STORAGE_BUCKET_NAME = "coha-data"
+STORAGE_BUCKET_NAME = os.environ.get("COHA_BUCKET_NAME", "coha-data")
 STORAGE_BUCKET_PUBLIC_URL = "https://storage.googleapis.com/" + STORAGE_BUCKET_NAME
 FORM_FIELD_NAMES = [
     "quadrat", "station",
@@ -30,7 +31,10 @@ OPTIONAL_FIELDS = ["direction", "distance", "detection_type", "age_class"]
 
 SUMMARY_FILE_NAME = "COHA-data-all-years.csv"
 SUMMARY_FILE_PUBLIC_URL = STORAGE_BUCKET_PUBLIC_URL + "/" + SUMMARY_FILE_NAME
-DATA_FILE_NAME_PATTERN = "[A-X]\\.([0-9]){2}\\.([0-9]{4})-[0-1][0-9]-[0-3][0-9]\\.[0-6][0-9]-[0-6][0-9]-[0-6][0-9]\\.csv"
+
+# Pre-compiled once; used in every blob-listing call
+DATA_FILE_NAME_PATTERN = r"[A-X]\.([0-9]){2}\.([0-9]{4})-[0-1][0-9]-[0-3][0-9]\.[0-6][0-9]-[0-6][0-9]-[0-6][0-9]\.csv"
+_DATA_FILE_RE = re.compile(DATA_FILE_NAME_PATTERN)
 
 SURVEY_BOUNDS = {
     "west": -123.157770,
@@ -39,7 +43,6 @@ SURVEY_BOUNDS = {
     "east": -122.937837
 }
 
-# Define the main extension set for Markdown
 MARKDOWN_EXTENSIONS = [
     'markdown.extensions.extra',
     'markdown.extensions.codehilite',
@@ -51,494 +54,413 @@ MARKDOWN_EXTENSIONS = [
 app = Flask(__name__, template_folder="templates", static_folder='static', static_url_path='')
 
 unselected: str = "not selected"
-quadrats = list(string.ascii_uppercase)[:24]    # 24 Quadrats named A-X
-stations = [str(i) for i in range(1, 17, 1)]    # 16 stations in each quadrat, numbered 1-16
-cloudValues = [str(i) for i in range(0, 5, 1)]  # valid values are 0-4
-windValues  = [str(i) for i in range(0, 5, 1)]  # valid values are 0-4
-noiseValues = [str(i) for i in range(0, 4, 1)]  # valid values are 0-3
+quadrats = list(string.ascii_uppercase)[:24]    # 24 quadrats named A-X
+stations = [str(i) for i in range(1, 17)]       # 16 stations per quadrat
+cloudValues = [str(i) for i in range(0, 5)]
+windValues  = [str(i) for i in range(0, 5)]
+noiseValues = [str(i) for i in range(0, 4)]
 quadrats.insert(0, unselected)
 stations.insert(0, unselected)
 
-# Add project ID environment variable
 GCP_PROJECT_ID = os.environ.get("COHA_GCP_PROJECT_ID")
 
+# Module-level storage client — created once per instance to avoid repeated auth overhead
+_storage_client = None
+
 def get_storage_client():
-    """
-    Create and return a Google Cloud Storage client.
-    Works in both deployed Cloud environment and local development.
-    """
-    try:
-        # First attempt: Use explicit project ID if provided
-        if GCP_PROJECT_ID:
-            return storage.Client(project=GCP_PROJECT_ID)
-
-        # Second attempt: Try to use application default credentials
+    global _storage_client
+    if _storage_client is None:
         try:
-            return storage.Client()
-        except Exception as inner_e:
-            print(f"Could not create client with default credentials: {inner_e}")
+            if GCP_PROJECT_ID:
+                _storage_client = storage.Client(project=GCP_PROJECT_ID)
+            else:
+                _storage_client = storage.Client()
+        except Exception as e:
+            print(f"Error creating storage client: {e}")
+            _storage_client = storage.Client.create_anonymous_client()
+    return _storage_client
 
-        # Third attempt: Check for service account key file
-        key_path = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-        if key_path and os.path.exists(key_path):
-            return storage.Client.from_service_account_json(key_path)
 
-        # Last resort for local development
-        print("Warning: Using anonymous client - limited functionality")
-        return storage.Client.create_anonymous_client()
+def get_bucket():
+    return get_storage_client().bucket(STORAGE_BUCKET_NAME)
 
-    except Exception as e:
-        print(f"Error creating storage client: {e}")
-        # Return anonymous client as last resort
-        return storage.Client.create_anonymous_client()
+
+# ---------------------------------------------------------------------------
+# Private helpers
+# ---------------------------------------------------------------------------
+
+def _csv_to_string(columns, rows):
+    """Serialise a list of dicts to a CSV string with a header row."""
+    buf = io.StringIO()
+    writer = csv.DictWriter(buf, fieldnames=columns)
+    writer.writeheader()
+    writer.writerows(rows)
+    return buf.getvalue()
+
+
+def _year_from_filename(name):
+    """Extract the 4-digit year from an observation filename (Q.SS.YYYY-...)."""
+    return name[5:9]
+
+
+def _iter_observation_blobs(year=None):
+    """
+    Yield GCS blob objects whose names match the observation file pattern.
+    If year is given, only blobs for that year are yielded.
+    """
+    year_str = str(year) if year is not None else None
+    for blob in get_storage_client().list_blobs(STORAGE_BUCKET_NAME):
+        if not _DATA_FILE_RE.match(blob.name):
+            continue
+        if year_str is not None and _year_from_filename(blob.name) != year_str:
+            continue
+        yield blob
+
+
+# ---------------------------------------------------------------------------
+# GCS read/write
+# ---------------------------------------------------------------------------
 
 def csv_write_to_google_cloud(filename, columns, data):
     """
-    Write a CSV file from an array of dicts (each array element is a dict with the relevant columns)
-    columns: list of column names in the order you would like them written
-    data: array of dicts to write
+    Unconditionally write a CSV to GCS (used by full regeneration).
+    Returns (success: bool, message: str).
     """
-    storage_client = get_storage_client()
-    bucket_name = STORAGE_BUCKET_NAME
+    blob = get_bucket().blob(filename)
+    blob.cache_control = "max-age=0,no-store"
     try:
-        # first try to read from an existing bucket
-        bucket = storage_client.get_bucket(bucket_name)
+        blob.upload_from_string(_csv_to_string(columns, data), content_type="text/csv")
+        return True, f"saved data to file {filename}"
     except Exception as e:
-        bucket = None
+        return False, f"Failed to save data: {e}"
 
-    if bucket is None:
-        # try creating the bucket if the read failed.
-        # TODO: use a more elegant check for bucket existence
+
+def remove_from_summary_file(blob_name, timestamp, max_retries=3):
+    """
+    Remove all rows matching timestamp from a summary CSV using generation-match.
+
+    Matching on timestamp is sufficient: each individual file has one row whose
+    timestamp value equals the timestamp encoded in its filename.  If two files
+    somehow share the same timestamp (manual imports, etc.) all matching rows are
+    removed — correct behaviour since the source file no longer exists.
+
+    Returns (success: bool, message: str).
+    """
+    blob = get_bucket().blob(blob_name)
+    blob.cache_control = "max-age=0,no-store"
+
+    for attempt in range(max_retries):
         try:
-            bucket = storage_client.create_bucket(bucket_name)
+            content = blob.download_as_text()
+            generation = blob.generation
+            rows = list(csv.DictReader(io.StringIO(content)))
+        except Exception:
+            return True, f"{blob_name} not found — nothing to remove"
+
+        filtered = [r for r in rows if r.get("timestamp") != timestamp]
+        removed = len(rows) - len(filtered)
+
+        try:
+            blob.upload_from_string(
+                _csv_to_string(FILE_FIELD_NAMES, filtered),
+                content_type="text/csv",
+                if_generation_match=generation
+            )
+            return True, f"Removed {removed} row(s) from {blob_name}"
+        except PreconditionFailed:
+            continue
         except Exception as e:
-            return "Failed to create bucket to save data.  Data NOT saved, sorry"
+            return False, f"Failed to update {blob_name}: {e}"
 
-    # files are all blobs in the google cloud
-    blob = bucket.blob(filename)
-    blob.cache_control = "max-age=0,no-store"  # disable caching so clients can read immediately after update
-    try:
-        with blob.open('w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=columns)
-            writer.writeheader()
-            for row in data:
-                writer.writerow(row)
-        msg = "saved data to file {}".format(filename)
-    except Exception as e:
-        msg = "Failed to save data"
-
-    return msg
+    return False, f"Gave up updating {blob_name} after {max_retries} retries"
 
 
-def is_there_new_data():
+def append_to_summary_file(blob_name, new_row, max_retries=3):
     """
-    Returns true if any object in the bucket has a newer timestamp than SUMMARY_FILE_NAME
+    Append a row to a summary CSV using GCS generation-match for concurrency safety.
+
+    If two Cloud Run instances try to update the summary simultaneously, the
+    generation-match precondition causes one write to fail. The loser retries,
+    re-reading the (now updated) file so neither observation is lost.
+
+    Returns (success: bool, message: str).
     """
-    storage_client = get_storage_client()
-    bucket_name = STORAGE_BUCKET_NAME
-    # first try to read from an existing bucket
-    bucket = storage_client.get_bucket(bucket_name)
+    blob = get_bucket().blob(blob_name)
+    blob.cache_control = "max-age=0,no-store"
 
-    if bucket is None:
-        # TODO: display error page on failure
-        return "Failed to open data bucket " + STORAGE_BUCKET_NAME + ", sorry"
+    for attempt in range(max_retries):
+        try:
+            content = blob.download_as_text()
+            generation = blob.generation
+            rows = list(csv.DictReader(io.StringIO(content)))
+        except Exception:
+            # File does not exist yet; generation=0 means "write only if absent"
+            rows = []
+            generation = 0
 
-    # check all blobs in the bucket, adding those from this year to the list
-    blob_list = storage_client.list_blobs(STORAGE_BUCKET_NAME)
-    reference_time = None
-    last_data_update_time = None
-    for blob in blob_list:
-        m = re.match(DATA_FILE_NAME_PATTERN, blob.name)
-        if m:
-            if last_data_update_time is None or blob.updated > last_data_update_time:
-                last_data_update_time = blob.updated
-        elif blob.name == SUMMARY_FILE_NAME:
-            reference_time = blob.updated
+        rows.append(new_row)
 
-    is_new = False
-    if last_data_update_time is not None and (reference_time is None or reference_time < last_data_update_time):
-        is_new = True
-    return is_new
+        try:
+            blob.upload_from_string(
+                _csv_to_string(FILE_FIELD_NAMES, rows),
+                content_type="text/csv",
+                if_generation_match=generation
+            )
+            return True, f"Updated {blob_name}"
+        except PreconditionFailed:
+            # Another instance wrote first — retry with fresh read
+            continue
+        except Exception as e:
+            return False, f"Failed to update {blob_name}: {e}"
+
+    # All retries exhausted. The individual observation file was already saved
+    # safely; a future admin regen will bring the summary back in sync.
+    print(f"Warning: gave up updating {blob_name} after {max_retries} retries")
+    return False, f"Summary update for {blob_name} deferred — individual file saved safely"
 
 
 def regenerate_data_summaries():
     """
-    Recreate all the data summary CSV files
+    Full regeneration: read every individual observation file and rebuild all
+    summary CSVs. Slow but always correct; called only from the admin endpoint
+    and as a cold-start fallback.
     """
-    # gather all the data
     data = get_data()
-
     yearly_data = parse_data_by_year(data)
 
-    # create the summary data file
-    csv_write_to_google_cloud(SUMMARY_FILE_NAME, FILE_FIELD_NAMES, data)
+    # All-years summary sorted by year, then by quadrat/station/timestamp within each year
+    # (within-year order comes from list_blobs, which is lexicographic by blob name)
+    data_sorted = []
+    for year in sorted(yearly_data.keys()):
+        data_sorted.extend(yearly_data[year])
 
-    # now write summary files for all years
-    # TODO: this is inefficient.  We should only update the file for years with new data
-    yearly_summaries = {}
-    for year in yearly_data.keys():
-        year_file_name = "COHA-data-" + str(year) + ".csv"
-        yearly_summaries[year] = STORAGE_BUCKET_PUBLIC_URL + "/" + year_file_name
-        csv_write_to_google_cloud(year_file_name, FILE_FIELD_NAMES, yearly_data[year])
+    csv_write_to_google_cloud(SUMMARY_FILE_NAME, FILE_FIELD_NAMES, data_sorted)
+    for year, rows in yearly_data.items():
+        csv_write_to_google_cloud(f"COHA-data-{year}.csv", FILE_FIELD_NAMES, rows)
 
-    return data, yearly_data
-
-
-def regenerate_current_year():
-    """
-    Recreate all the data summary CSV files
-    """
-    year = datetime.datetime.now().year
-
-    # gather all the data
-    current_data = get_data(year)
-
-    # read the summary file to get data for other years
-    summary_data = get_summary_data(SUMMARY_FILE_NAME)
-
-    yearly_data = parse_data_by_year(summary_data)
-    yearly_data[str(year)] = current_data
-
-    # now rebuild the complete data set with the updated current year
-    data = []
-    for y in sorted(yearly_data.keys()):
-        data += yearly_data[y]
-
-    # create the summary data file
-    csv_write_to_google_cloud(SUMMARY_FILE_NAME, FILE_FIELD_NAMES, data)
-
-    # now write a new summary file the current year
-    year_file_name = "COHA-data-" + str(year) + ".csv"
-    csv_write_to_google_cloud(year_file_name, FILE_FIELD_NAMES, current_data)
-
-    return data, yearly_data
+    return data_sorted, yearly_data
 
 
 def parse_data_by_year(data):
-    """
-    Returns the data broken out by year
-    """
-    # compile lists of the data from each year, so we can save year files
+    """Group a list of observation dicts by year string."""
     yearly_data = {}
-    for i in range(0, len(data)):
-        year = data[i]["timestamp"][0:4]
-        if year in yearly_data:
-            yearly_data[year].append(data[i])
-        else:
-            yearly_data[year] = [data[i]]
+    for row in data:
+        year = row["timestamp"][0:4]
+        yearly_data.setdefault(year, []).append(row)
     return yearly_data
 
 
 def get_data(year=None):
     """
-    Read all the data files for the specified year and return an array of dicts whose keys are the field names
-
+    Read individual observation files for the given year (or all years).
+    Uses blob objects from list_blobs directly — no redundant API calls.
     """
     data = []
-    storage_client = get_storage_client()
-    bucket_name = STORAGE_BUCKET_NAME
-    # first try to read from an existing bucket
-    bucket = storage_client.get_bucket(bucket_name)
-
-    if bucket is None:
-        # TODO: display error page on failure
-        return "Failed to open data bucket " + STORAGE_BUCKET_NAME + ", sorry"
-
-    # check all blobs in the bucket, adding those from this year to the list
-    year = year  # need the year as a string
-    year_pattern = "[A-X][.][0-9][0-9][.]" + str(year)
-    names = []
-    for blob in storage_client.list_blobs(STORAGE_BUCKET_NAME):
-        name = blob.name
-        # only process appropriately named files.  Who knows what else we'll stick in the bucket later
-        if re.match(DATA_FILE_NAME_PATTERN, name):
-            # if a year is selected, only choose matching files
-            if year is not None:
-                # get data for the selected year
-                if re.match(year_pattern, name):
-                    names.append(name)
-            else:
-                # otherwise return all the data
-                names.append(name)
-
-    for name in names:
-        blob = bucket.blob(name)
+    for blob in _iter_observation_blobs(year):
         try:
-            with blob.open("r") as csvfile:
-                reader = csv.DictReader(csvfile)
-                for row in reader:
-                    data.append(dict(row))
+            content = blob.download_as_text()
+            for row in csv.DictReader(io.StringIO(content)):
+                data.append(dict(row))
         except Exception as e:
-            pass  # silently skip files we can't open
+            print(f"Skipping {blob.name}: {e}")
     return data
 
 
 def get_summary_data(summary_file=SUMMARY_FILE_NAME):
-    """
-    Get data from a summary file.
-    This should be faster than having to read all observation files.
-    """
+    """Read data from a summary CSV. Returns empty list if the file is absent."""
     data = []
-    storage_client = get_storage_client()
-    bucket_name = STORAGE_BUCKET_NAME
-    # first try to read from an existing bucket
-    bucket = storage_client.get_bucket(bucket_name)
-
-    if bucket is None:
-        # TODO: display error page on failure
-        return data
     try:
-        with bucket.blob(summary_file).open("r") as blob:
-            reader = csv.DictReader(blob)
-            for row in reader:
-                data.append(dict(row))
+        content = get_bucket().blob(summary_file).download_as_text()
+        for row in csv.DictReader(io.StringIO(content)):
+            data.append(dict(row))
     except Exception as e:
-        pass
-
+        print(f"Could not read {summary_file}: {e}")
     return data
 
 
 def load_station_coords():
-    """
-    Load prior station coordinates so we can sanity check the new station location
-    """
     coords = {}
     with open("static/COHA-Station-Coordinates-v1.csv", "r") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            (quadrat, station, latitude, longitude, year) = \
-                (row["Quadrat"], row["Station"], row["latitude"], row["longitude"], row["year taken"])
-            if quadrat not in coords:
-                coords[quadrat] = {}
-            if station not in coords[quadrat]:
-                coords[quadrat][station] = {}
-            coords[quadrat][station] = {"latitude": latitude, "longitude": longitude, "year": year}
+        for row in csv.DictReader(f):
+            q, s = row["Quadrat"], row["Station"]
+            coords.setdefault(q, {})[s] = {
+                "latitude":  row["latitude"],
+                "longitude": row["longitude"],
+                "year":      row["year taken"]
+            }
     return coords
 
 
 def sanitize_text_input(untrusted, max_len=100):
-    """
-    This function attempts to render text input harmless by doing the following:
-    - strip characters other than letters and harmless punctuation
-    - limiting the string length
-    """
-    pattern = "[^A-Za-z.,:; ']"
-    sanitized = re.sub(pattern, "", untrusted)
-    sanitized = sanitized[:max_len] if len(sanitized) > max_len else sanitized
-    return sanitized
+    sanitized = re.sub(r"[^A-Za-z.,:; ']", "", untrusted)
+    return sanitized[:max_len]
 
 
 def get_cookie_data():
-    default_quadrat = "Choose"
-    observers = request.cookies.get('observers')
-    quadrat = request.cookies.get('quadrat')
-
-    observers = "" if observers is None else sanitize_text_input(observers)
-    quadrat = "Choose" if quadrat is None else quadrat
-    quadrat = quadrat if quadrat in quadrats else default_quadrat
+    observers = sanitize_text_input(request.cookies.get('observers', ''))
+    quadrat   = request.cookies.get('quadrat', 'Choose')
+    quadrat   = quadrat if quadrat in quadrats else 'Choose'
     return observers, quadrat
 
 
 def is_iphone():
-    """
-    look for iPhone in the user-agent field of the HTTP request
-    """
-    agent = str(request.headers.get("user-agent"))
-    return re.search('iPhone', agent) is not None
+    return re.search('iPhone', str(request.headers.get("user-agent"))) is not None
 
-def load_yearly_data():
-    """
-    Load and prepare data for the map endpoint
-    """
-    data = get_summary_data()
-    return parse_data_by_year(data)
+
+def requires_admin(f):
+    """Decorator: enforce HTTP Basic Auth using the COHA_ADMIN_PASSWORD env var."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not ADMIN_PASSWORD:
+            return Response(
+                "Admin access not configured — set the COHA_ADMIN_PASSWORD environment variable.",
+                503
+            )
+        auth = request.authorization
+        if not auth or auth.password != ADMIN_PASSWORD:
+            return Response(
+                "Authentication required",
+                401,
+                {"WWW-Authenticate": 'Basic realm="COHA Admin"'}
+            )
+        return f(*args, **kwargs)
+    return decorated
+
+
+# ---------------------------------------------------------------------------
+# Survey form
+# ---------------------------------------------------------------------------
 
 @app.route('/')
-def collect_data():  # put application's code here
-    (observers, quadrat) = get_cookie_data()
-    # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
-    # Figure out the platform from the user-agent header.
+def collect_data():
+    observers, quadrat = get_cookie_data()
     iphone = is_iphone()
-
-    msg = "Select Station and conditions before starting the survey."
     return render_template('coha-ui.html',
-                           observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
-                           quadrats=quadrats, stations=stations, coords=load_station_coords(),
+                           observers=observers, quadrat=quadrat,
+                           message="Select Station and conditions before starting the survey.",
+                           iphone=iphone,
+                           quadrats=quadrats, stations=stations,
+                           coords=load_station_coords(),
                            maps_api_key=MAPS_API_KEY,
                            map_id=MAP_ID)
 
 
 @app.route('/save/', methods=['GET', 'POST'])
 def save_data():
-    """
-    handle the submitted data for a single station
-    :return:
-    """
-    # TODO: make stripping the notes field work better in a unicode world
-    ASCII_MAP = dict.fromkeys(range(32))
-    for key in ASCII_MAP.keys():
-        ASCII_MAP[key] = '^'  # map all control characters to the carat symbol
+    ASCII_MAP = {k: '^' for k in range(32)}
     ok_to_save = True
     bad = "bad value"
     timestamp = datetime.datetime.now(tz=pytz.timezone("Canada/Pacific")).strftime("%Y-%m-%d.%H-%M-%S")
-    form = request.form
-    # Get the observers address and quadrat from a cookie, if available
-    (observers, quadrat) = get_cookie_data()
+    observers, quadrat = get_cookie_data()
 
-    # get the form data
-    fieldNames = FORM_FIELD_NAMES
-    csvColumns = FILE_FIELD_NAMES
     fields = {"timestamp": timestamp}
-    msg = ""
-    for field in fieldNames:
-        try:
-            fields[field] = request.form[field]
-            msg += " " + field + "=\"" + str(fields[field])
-        except Exception as e:
-            fields[field] = ""
-            if field not in OPTIONAL_FIELDS:
-                msg += " Missing value for field:" + field + ".  "
-
-    # no point saving if we don't have location data
-    latitude = fields["latitude"]
-    longitude = fields["longitude"]
     errmsg = "ERROR: Failed to save observation.   "
-    if latitude == "":
-        errmsg += "Latitude must have a value.  "
-        fields["latitude"] = bad
-    else:
-        try:
-            latitude = float(latitude)
-            if (latitude < (SURVEY_BOUNDS["south"] - 0.1)) or latitude > (SURVEY_BOUNDS["north"]+0.1):
-                ok_to_save = False
-                errmsg += "latitude out of bounds.  "
-                fields["latitude"] = bad
-            else:
-                fields["latitude"] = str(latitude)  # yay, we have a good value!
-        except Exception as e:
-            ok_to_save = False
-            fields["latitude"] = bad
-            errmsg += "invalid value for latitude.  "
-    if longitude == "":
-        errmsg += "Longitude must have a value.  "
-        fields["longitude"] = bad
-    else:
-        try:
-            longitude = float(longitude)
-            if (longitude < (SURVEY_BOUNDS["west"] - 0.1)) or longitude > (SURVEY_BOUNDS["east"]+0.1):
-                ok_to_save = False
-                fields["longitude"] = bad
-                errmsg += "latitude out of bounds.  "
-            else:
-                fields["longitude"] = str(longitude)  # yay, we have a good value!
-        except Exception as e:
-            ok_to_save = False
-            fields["longitude"] = bad
-            errmsg += "invalid value for longitude."
-
-    # sanitize the data, so the site is harder to exploit by bad actors
-    fields["observers"] = sanitize_text_input(fields["observers"])
-    fields["quadrat"] = fields["quadrat"] if fields["quadrat"] in quadrats else bad
-    fields["station"] = fields["station"] if fields["station"] in stations else bad
-    fields["cloud"] = fields["cloud"] if fields["cloud"] in cloudValues else bad
-    fields["wind"] = fields["wind"] if fields["wind"] in windValues else bad
-    fields["noise"] = fields["noise"] if fields["noise"] in noiseValues else bad
-    fields["notes"] = fields["notes"].translate(ASCII_MAP)  # strip non-ascii chars from the notes, eg tabs and newlines
-    fields["notes"] = html.escape(fields["notes"])[:2048]   # limit not length and escape HTML.
-    fields["detection"] = fields["detection"] if fields["detection"] in ["no", "yes"] else bad
-    if "direction" in fields.keys() and fields["direction"] != "":
-        fields["direction"] = re.sub("[^0-9]", "", fields["direction"])  # strip non-digits
-        fields["direction"] = str(int(fields["direction"]))[:4]
-    else:
-        fields["direction"] = ""
-    if "distance" in fields.keys() and fields["distance"] != "":
-        fields["distance"] = re.sub("[^0-9]", "", fields["distance"])  # strip non-digits
-        fields["distance"] = str(int(fields["distance"]))[:4]
-    else:
-        fields["distance"] = ""
-    fields["detection_type"] = fields["detection_type"] if fields["detection_type"] in ["A", "V"] else ""
-    fields["age_class"] = fields["age_class"] if fields["age_class"] in ["unknown", "juvenile", "adult"] else ""
+    msg = ""
 
     for field in FORM_FIELD_NAMES:
-        if fields[field] == bad:
+        try:
+            fields[field] = request.form[field]
+        except Exception:
+            fields[field] = ""
+            if field not in OPTIONAL_FIELDS:
+                msg += f" Missing value for field: {field}.  "
+
+    # Validate latitude and longitude
+    for coord, lo, hi, label in [
+        ("latitude",  SURVEY_BOUNDS["south"] - 0.1, SURVEY_BOUNDS["north"] + 0.1, "latitude"),
+        ("longitude", SURVEY_BOUNDS["west"]  - 0.1, SURVEY_BOUNDS["east"]  + 0.1, "longitude"),
+    ]:
+        val = fields[coord]
+        if val == "":
             ok_to_save = False
-            break
+            errmsg += f"{label} must have a value.  "
+            fields[coord] = bad
+        else:
+            try:
+                fval = float(val)
+                if fval < lo or fval > hi:
+                    ok_to_save = False
+                    errmsg += f"{label} out of bounds.  "
+                    fields[coord] = bad
+                else:
+                    fields[coord] = str(fval)
+            except Exception:
+                ok_to_save = False
+                errmsg += f"invalid value for {label}.  "
+                fields[coord] = bad
+
+    # Sanitize remaining fields
+    fields["observers"]      = sanitize_text_input(fields["observers"])
+    fields["quadrat"]        = fields["quadrat"]   if fields["quadrat"]   in quadrats    else bad
+    fields["station"]        = fields["station"]   if fields["station"]   in stations    else bad
+    fields["cloud"]          = fields["cloud"]     if fields["cloud"]     in cloudValues else bad
+    fields["wind"]           = fields["wind"]      if fields["wind"]      in windValues  else bad
+    fields["noise"]          = fields["noise"]     if fields["noise"]     in noiseValues else bad
+    fields["notes"]          = html.escape(fields["notes"].translate(ASCII_MAP))[:2048]
+    fields["detection"]      = fields["detection"] if fields["detection"] in ["no", "yes"] else bad
+    fields["detection_type"] = fields["detection_type"] if fields["detection_type"] in ["A", "V"] else ""
+    fields["age_class"]      = fields["age_class"] if fields["age_class"] in ["unknown", "juvenile", "adult"] else ""
+
+    for key in ("direction", "distance"):
+        if fields.get(key):
+            fields[key] = str(int(re.sub(r"[^0-9]", "", fields[key])))[:4]
+        else:
+            fields[key] = ""
+
+    if any(fields[f] == bad for f in FORM_FIELD_NAMES):
+        ok_to_save = False
 
     if ok_to_save:
-        # save the data file
-        filename = "{}.{:02d}.{}.csv".format(fields['quadrat'], int(fields['station']), timestamp)
-        msg = csv_write_to_google_cloud(filename, csvColumns, [fields])
+        # 1. Write the individual observation file — this is the canonical record.
+        #    Each filename is unique (quadrat + station + timestamp), so there is
+        #    no possibility of a write conflict here.
+        filename = "{}.{:02d}.{}.csv".format(
+            fields['quadrat'], int(fields['station']), timestamp
+        )
+        ok, msg = csv_write_to_google_cloud(filename, FILE_FIELD_NAMES, [fields])
+
+        if ok:
+            # 2. Update the summary files using generation-match conditional writes.
+            #    If a concurrent save causes a collision, the loser retries so both
+            #    observations end up in the summary.  If all retries fail the
+            #    individual file is still safe and an admin regen will fix the summary.
+            year = timestamp[:4]
+            ok1, m1 = append_to_summary_file(f"COHA-data-{year}.csv", fields)
+            ok2, m2 = append_to_summary_file(SUMMARY_FILE_NAME, fields)
+            if not ok1 or not ok2:
+                print(f"Summary update warning — {m1}; {m2}")
     else:
         msg = errmsg + msg
 
-    # We have to use different font sizes for iPhone and Android, due to how they handle scaling.
-    # Figure out the platform from the user-agent header.
     iphone = is_iphone()
-
     return render_template('coha-ui.html',
-                           observers=observers, quadrat=quadrat, message=msg, iphone=iphone,
-                           quadrats=quadrats, stations=stations, coords=load_station_coords(),
+                           observers=observers, quadrat=quadrat,
+                           message=msg, iphone=iphone,
+                           quadrats=quadrats, stations=stations,
+                           coords=load_station_coords(),
                            maps_api_key=MAPS_API_KEY,
                            map_id=MAP_ID)
 
 
-@app.route('/map-regen-all/')
-def show_map_regen_all():
-    """
-    Display a map of the datapoints received for the most recent year.
-    Regenerate maps and summary files for all years if any data point is newer than the summary file.
-    """
-    # regenerate data files if needed
-    need_regen = is_there_new_data()
-    if need_regen:
-        data, yearly_data = regenerate_data_summaries()
-    else:
-        data = get_summary_data()
-        yearly_data = parse_data_by_year(data)
-
-    # Get the current year
-    year = datetime.date.today().year
-
-    # look for files matching the current year.  If none found, look for previous year
-    years = sorted(yearly_data.keys())
-    if str(year) not in years:
-        year = years[:-1]
-
-    # Build a structure to pass to the web template.  The template will handle all the map stuff.
-    return render_template('coha-map.html',
-                           yearly_data=yearly_data,
-                           year=year,
-                           years=years,
-                           maps_api_key=MAPS_API_KEY,
-                           map_id=MAP_ID)
-
+# ---------------------------------------------------------------------------
+# Map
+# ---------------------------------------------------------------------------
 
 @app.route('/map/')
 def show_map():
-    """
-    Display a map of the datapoints received for the most recent year.
+    """Display survey points. Reads summary file only — no individual file scans."""
+    data = get_summary_data()
+    if not data:
+        # Summary missing (e.g. first deployment); fall back to full regeneration
+        data, _ = regenerate_data_summaries()
 
-    If a data point is newer than the summary file, first regenerate the data for the current year.
-    """
-    # regenerate data files if needed
-    need_regen = is_there_new_data()
-    if need_regen:
-        data, yearly_data = regenerate_current_year()
-    else:
-        data = get_summary_data()
-        yearly_data = parse_data_by_year(data)
-
-    # Get the current year
+    yearly_data = parse_data_by_year(data)
     year = datetime.date.today().year
-
-    # look for files matching the current year.  If none found, look for previous year
     years = sorted(yearly_data.keys())
-    if str(year) not in years:
-        year = years[:-1]
+    if str(year) not in years and years:
+        year = years[-1]
 
-    # Build a structure to pass to the web template.  The template will handle all the map stuff.
     return render_template('coha-map.html',
-                           yearly_data=yearly_data,
                            year=year,
                            years=years,
                            maps_api_key=MAPS_API_KEY,
@@ -547,69 +469,146 @@ def show_map():
 
 @app.route('/map/data')
 def map_data():
-    """
-    Return map data as JSON for client-side rendering
-    """
+    """Return all survey data as JSON for client-side map rendering."""
     try:
         data = get_summary_data()
-        yearly_data = parse_data_by_year(data)
-        return jsonify(yearly_data)  # Return complete data
+        return jsonify(parse_data_by_year(data))
     except Exception as e:
         print(f"Error in map_data: {e}")
         return jsonify({"error": str(e)}), 500
 
+
+# ---------------------------------------------------------------------------
+# Data download
+# ---------------------------------------------------------------------------
+
 @app.route('/data/')
 def csv_data():
-    """
-    Return all the data as a csv file
-    """
-    # update the summary files if there is new data
-    if is_there_new_data():
-        (data, yearly_data) = regenerate_data_summaries()
-    else:
-        data = get_summary_data()
-        yearly_data = parse_data_by_year(data)
+    """Display links to download the public summary CSV files."""
+    data = get_summary_data()
+    if not data:
+        data, _ = regenerate_data_summaries()
 
+    yearly_data = parse_data_by_year(data)
     years = sorted(yearly_data.keys())
-    yearly_summaries = {}
-    for year in yearly_data.keys():
-        year_file_name = "COHA-data-" + str(year) + ".csv"
-        yearly_summaries[year] = STORAGE_BUCKET_PUBLIC_URL + "/" + year_file_name
-
-    # return a redirect to the google cloud storage URL
+    yearly_summaries = {
+        y: f"{STORAGE_BUCKET_PUBLIC_URL}/COHA-data-{y}.csv" for y in years
+    }
     return render_template("coha-download.html",
                            all_years=SUMMARY_FILE_PUBLIC_URL,
                            years=years,
                            yearly_summaries=yearly_summaries)
 
 
+# ---------------------------------------------------------------------------
+# Admin
+# ---------------------------------------------------------------------------
+
+_YEAR_RE = re.compile(r"^\d{4}$")
+
+
+@app.route('/admin/')
+@requires_admin
+def admin_page():
+    """
+    List individual observation files for the selected year.
+    Shows filenames only (fast); use /admin/view/ to inspect content.
+    """
+    selected_year = request.args.get('year', str(datetime.date.today().year))
+    if not _YEAR_RE.match(selected_year):
+        selected_year = str(datetime.date.today().year)
+
+    op       = request.args.get('op', '')
+    op_file  = request.args.get('file', '')
+    op_count = request.args.get('count', '')
+
+    filenames = []
+    all_years = set()
+
+    for blob in _iter_observation_blobs():   # no year filter — collect all_years in one pass
+        file_year = _year_from_filename(blob.name)
+        all_years.add(file_year)
+        if file_year == selected_year:
+            filenames.append(blob.name)
+
+    filenames.sort()
+
+    return render_template('coha-admin.html',
+                           year=selected_year,
+                           all_years=sorted(all_years),
+                           filenames=filenames,
+                           op=op,
+                           op_file=op_file,
+                           op_count=op_count)
+
+
+@app.route('/admin/view/')
+@requires_admin
+def admin_view():
+    """Return the raw CSV content of a single observation file as plain text."""
+    filename = request.args.get('filename', '')
+    if not _DATA_FILE_RE.match(filename):
+        return "Invalid filename", 400
+    try:
+        content = get_bucket().blob(filename).download_as_text()
+        return Response(content, mimetype='text/plain')
+    except Exception as e:
+        return f"Could not read {filename}: {e}", 500
+
+
+@app.route('/admin/delete/', methods=['POST'])
+@requires_admin
+def admin_delete():
+    """Delete an individual observation file and remove it from the summary files."""
+    filename = request.form.get('filename', '')
+    if not _DATA_FILE_RE.match(filename):
+        return "Invalid filename", 400
+
+    # Read the timestamp from the file before deleting so we know what to remove
+    try:
+        content = get_bucket().blob(filename).download_as_text()
+        rows = list(csv.DictReader(io.StringIO(content)))
+        timestamp = rows[0].get("timestamp", "") if rows else ""
+    except Exception as e:
+        return f"Could not read {filename}: {e}", 500
+
+    try:
+        get_bucket().blob(filename).delete()
+    except Exception as e:
+        return f"Failed to delete {filename}: {e}", 500
+
+    # Remove the deleted row from both summary files
+    year = _year_from_filename(filename)
+    ok1, m1 = remove_from_summary_file(f"COHA-data-{year}.csv", timestamp)
+    ok2, m2 = remove_from_summary_file(SUMMARY_FILE_NAME, timestamp)
+    if not ok1 or not ok2:
+        print(f"Summary update warning after delete — {m1}; {m2}")
+
+    return redirect(f"/admin/?year={year}&op=deleted&file={filename}")
+
+
+@app.route('/admin/regen/', methods=['POST'])
+@requires_admin
+def admin_regen():
+    """Force a full regeneration of all summary files from individual observation files."""
+    data, _ = regenerate_data_summaries()
+    return redirect(f"/admin/?op=regenerated&count={len(data)}")
+
+
+# ---------------------------------------------------------------------------
+# Help
+# ---------------------------------------------------------------------------
+
 @app.route('/helpmd/')
 def show_help_md():
-    """
-    Serve the README.md file as HTML.
-
-    NOTE: this  endpoint only works when deployed, not on the local test server
-    TODO: make this work on the local test server.
-    """
-    # Dockerfile copies README.md into the correct location on deployment.
-    # This is awkward, but we need the README.md file to be in the root directory for github
-    # and we don't want to maintain two copies.  I could try adding a symlink in my local workspace, but
-    # that would have to be repeated whenever the repo is cloned to a new machine and won't work on Windows.
-
     with open("static/HELP.md", 'r', encoding='utf-8') as f:
         md_content = f.read()
     html_content = markdown.markdown(md_content, extensions=MARKDOWN_EXTENSIONS)
-
     return render_template('help.html', mkd_text=html_content)
+
 
 @app.route('/help/')
 def show_help():
-    """
-    Serve the help file from GitHub
-
-    The Markdown version wasn't rendering correctly from Flask, hence this kludge to just link
-    to the page on GitHub, which renders the markdown correctly.
-    """
     return redirect('https://github.com/commonloon/coha-gcloud/blob/main/static/HELP.md')
 
 

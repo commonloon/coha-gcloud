@@ -436,17 +436,17 @@ function stationChanged() {
 
 function cloudChanged() {
     let val = document.getElementById("cloud").value;
-    cloudSet = val in ["0", "1", "2", "3", "4"];
+    cloudSet = ["0", "1", "2", "3", "4"].includes(val);
 }
 
 function windChanged() {
     let val = document.getElementById("wind").value;
-    windSet = val in ["0", "1", "2", "3", "4"];
+    windSet = ["0", "1", "2", "3", "4"].includes(val);
 }
 
 function noiseChanged() {
     let val = document.getElementById("noise").value;
-    noiseSet = val in ["0", "1", "2", "3"];
+    noiseSet = ["0", "1", "2", "3"].includes(val);
 }
 
 function detectionChanged() {

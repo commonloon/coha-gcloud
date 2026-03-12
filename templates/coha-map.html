@@ -13,8 +13,8 @@
     <h2>A purple bar at the base of a marker indicates direction and distance to a detection.</h2>
     <form>
         <select id="select_year" name="select_year" onchange="show_year()">
-        {% for year in years %}
-            <option value="{{ year }}" {% if year == year|string %}selected{% endif %}>{{ year }}</option>
+        {% for y in years %}
+            <option value="{{ y }}" {% if y == year|string %}selected{% endif %}>{{ y }}</option>
         {% endfor %}
         </select>
     </form>

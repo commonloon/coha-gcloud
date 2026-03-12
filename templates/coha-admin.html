@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>COHA Admin</title>
+    <style>
+        body { font-family: sans-serif; margin: 2em; }
+        h1 { color: #333; }
+        .msg-ok  { color: green; font-weight: bold; }
+        .msg-err { color: red;   font-weight: bold; }
+        table { border-collapse: collapse; width: 100%; margin-top: 1em; }
+        th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; }
+        th { background: #eee; }
+        tr:nth-child(even) { background: #f9f9f9; }
+        .btn-delete { background: #c00; color: white; border: none; padding: 4px 10px; cursor: pointer; border-radius: 3px; }
+        .btn-regen  { background: #060; color: white; border: none; padding: 6px 14px; cursor: pointer; border-radius: 3px; font-size: 1em; }
+        .controls   { display: flex; align-items: center; gap: 2em; margin-bottom: 1em; }
+        #loading {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 1.4em;
+            text-align: center;
+            padding-top: 30vh;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+
+<div id="loading">
+    ⏳ Regenerating summaries — please wait, this may take up to a minute…
+</div>
+
+<h1>COHA Admin</h1>
+
+{% if op == 'deleted' %}
+    <p class="msg-ok">Deleted {{ op_file }}. Summaries have been regenerated.</p>
+{% elif op == 'regenerated' %}
+    <p class="msg-ok">Regenerated summaries from {{ op_count }} observations.</p>
+{% endif %}
+
+<div class="controls">
+    <form method="GET">
+        <label>Year:
+            <select name="year" onchange="this.form.submit()">
+                {% for y in all_years %}
+                <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+            </select>
+        </label>
+    </form>
+
+    <form method="POST" action="/admin/regen/" onsubmit="return confirmRegen()">
+        <button class="btn-regen" type="submit">Force Full Regeneration</button>
+    </form>
+</div>
+
+<h2>{{ filenames|length }} observation file(s) for {{ year }}</h2>
+
+{% if filenames %}
+<table>
+    <tr>
+        <th>Filename</th>
+        <th>View</th>
+        <th>Delete</th>
+    </tr>
+    {% for filename in filenames %}
+    <tr>
+        <td>{{ filename }}</td>
+        <td><a href="/admin/view/?filename={{ filename }}" target="_blank">view</a></td>
+        <td>
+            <form method="POST" action="/admin/delete/"
+                  onsubmit="return confirmDelete('{{ filename }}')">
+                <input type="hidden" name="filename" value="{{ filename }}">
+                <button class="btn-delete" type="submit">Delete</button>
+            </form>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% else %}
+<p>No observation files found for {{ year }}.</p>
+{% endif %}
+
+<script>
+    function confirmDelete(filename) {
+        if (!confirm('Delete ' + filename + '?\nThis cannot be undone.')) return false;
+        document.getElementById('loading').style.display = 'block';
+        return true;
+    }
+
+    function confirmRegen() {
+        if (!confirm('Regenerate all summaries from individual files?\nThis may take up to a minute.')) return false;
+        document.getElementById('loading').style.display = 'block';
+        return true;
+    }
+</script>
+
+</body>
+</html>
