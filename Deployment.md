@@ -1,60 +1,222 @@
 # Deploying coha-gcloud to Google Cloud Run
 
-I developed the flask app on Linux, but you should be able to deploy the app from Windows or Mac.
-Here's what I remember about what's needed to get the app to run correctly on Google Cloud Run. 
-(*I'm Writing this from memory, so I've probably left out important details, sorry.*)
+The app was developed on Linux but can be deployed from Windows or Mac.
 
-TODO: Add more links to the appropriate google cloud documentation
+## Prerequisites
 
-1. Install the [google cloud command line tool](https://cloud.google.com/sdk/docs/install)
-2. Authenticate the tool to the google account you want to use for the deployment
-3. In the google cloud management console, create a project to host the service.  I named my project "wildresearch-coha"
-4. Create a cloud storage bucket to hold the data
-   - I named my bucket coha-data.  You may have to use a different name: if so, you will need to change the value of STORAGE_BUCKET_NAME in main.py
-   - configure the bucket to be publicly accessible.  The /data endpoint uses this public access to let users download data files.
-     - If you don't want the bucket to be public, you will need to modify the /data endpoint to serve the data files directly
-5. Do an initial deployment of the project, so you can get the URL that google will use to identify it
-   - in the directory that contains main.py, run "gcloud run deploy --source ."  to deploy the project
-     - you may have to set up some authentication stuff to make this work
-     - the gcloud CLI will probably suggest coha-gcloud for the service name: that's what I used.
-     - I put my service in region us-west1 (Oregon).  Other regions are fine, but Oregon seemed the closest option to Vancouver
-6. Find the deployed coha-gcloud service in the Cloud Run console, then click on the service name to see details
-   - The URL for the service should be deployed near the top of the page, beside the service name and region
-   - The service URL will look something like this: https://coha-gcloud-5okgxs64sq-uw.a.run.app
-7. Choose the domain name you want for the server, e.g. coha.pacificloon.ca
-   - You can skip this step and just the service URL that google provides, but the long host name will make it more difficult for your users to access the site.
-   - Follow the [instructions](https://cloud.google.com/run/docs/mapping-custom-domains#run) to map a custom domain to the cloud run app
-      - Get whoever administers DNS for the domain to create a CNAME record that maps the desired hostname to ghs.google.com
-        - e.g. coha.pacificloon.ca. 3600 IN CNAME ghs.googlehosted.com.
-      - Use Cloud Run Domain Mappings to map the desired domain to the google cloud run service
-8. Create a [google maps API key](https://developers.google.com/maps/documentation/javascript/get-api-key).  The map won't work without one.
-   - restrict the API key to require your custom domain as the referrer
-   - restrict the API key to just the required Maps APIs.  You may need to [enable the APIs on your project](https://cloud.google.com/apis/docs/getting-started).
-     - Distance Matrix API 
-     - Geocoding API 
-     - Geolocation API  *probably need this one*
-     - Maps Embed API 
-     - **Maps JavaScript API** *essential, might be the only API you need to enable*  
-     - Maps Static API
-8. Create a Google Maps ID for the map on the /map endpoint.  This is more complicated than one might firet suspect:
-   - go to the google cloud console (console.cloud.google.com) and sign in
-   - click "View All Products" to bring up the the full list of options
-   - search for "Maps"
-   - click on "Google Maps Platform"
-   - click on "Map Management"
-   - click "Create map ID"
-     - the name and description don't matter much: pick something that will remind you later what the map is for
-     - Select "JavaScript" for the Map type.
-       - Choose "Vector" (probably defaults to Raster, but we want Vector)
-       - do NOT tick the "Tilt" or "Rotation" boxes
-     - Click the Save button
-     - get the value of the new map ID
-9. Put the Maps API key into an [environment variable](https://cloud.google.com/functions/docs/configuring/env-var) for your coha-gcloud service
-10. Put the map ID into an environment variable.  The command I used was
+1. Install the [Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
+2. Authenticate:
+   ```bash
+   gcloud auth login
+   gcloud auth application-default login
+   gcloud config set project YOUR_PROJECT_ID
+   gcloud config set account YOUR_GOOGLE_ACCOUNT
+   gcloud auth application-default set-quota-project YOUR_PROJECT_ID
+   ```
+   Example:
+   ```bash
+   gcloud config set project wildresearch-coha
+   gcloud config set account harvey.dueck@gmail.com
+   ```
 
-        gcloud run services update coha-gcloud \
-        --set-env-vars COHA_GOOGLE_MAP_ID=VALUE_OF_MAP_ID_FROM_GOOGLE,COHA_GCP_PROJECT_ID=wildresearch-coha \
-        --region us-west1
-10. Deploy the app again and confirm that the environment variables exist in the latest revision
-    - gcloud run deploy --source .
-11. Test the app to make sure it serves pages and saves data
+## First-time setup
+
+### 3. Create a GCP project
+
+In the Google Cloud console, create a project (e.g. `wildresearch-coha`).
+
+### 4. Create a Cloud Storage bucket
+
+- Create a bucket to hold observation data (e.g. `coha-data`).
+  If you use a name other than `coha-data`, set the `COHA_BUCKET_NAME`
+  environment variable on the Cloud Run service (see step 9).
+- Make the bucket **publicly readable** so the `/data` endpoint can serve direct
+  download links:
+  ```bash
+  gsutil mb -p YOUR_PROJECT_ID -l YOUR_REGION gs://YOUR_BUCKET_NAME
+  gsutil iam ch allUsers:objectViewer gs://YOUR_BUCKET_NAME
+  ```
+  Example:
+  ```bash
+  gsutil mb -p wildresearch-coha -l us-west1 gs://coha-data
+  gsutil iam ch allUsers:objectViewer gs://coha-data
+  ```
+
+### 5. Initial deployment
+
+From the directory containing `main.py`:
+```bash
+gcloud run deploy coha-gcloud --source . --region YOUR_REGION
+```
+- Allow unauthenticated invocations when prompted (the app is public).
+- The CLI will suggest `coha-gcloud` as the service name.
+- The original deployment uses region `us-west1` (Oregon) as the closest option
+  to Vancouver.
+
+### 6. Find the service URL
+
+In the Cloud Run console, click the service name to find its URL:
+```
+https://coha-gcloud-<hash>.YOUR_REGION.run.app
+```
+
+### 7. Map a custom domain (optional but recommended)
+
+- Ask your DNS administrator to add a CNAME record:
+  ```
+  YOUR_HOSTNAME. 3600 IN CNAME ghs.googlehosted.com.
+  ```
+  Example: `coha.pacificloon.ca. 3600 IN CNAME ghs.googlehosted.com.`
+- Follow the [Cloud Run custom domain instructions](https://cloud.google.com/run/docs/mapping-custom-domains#run)
+  to map your hostname to the service.
+
+### 8. Create a Google Maps API key
+
+The map won't work without one.
+
+- Go to [Google Maps Platform](https://console.cloud.google.com/) → APIs & Services →
+  Credentials → Create credentials → API key.
+- Restrict the key to your custom domain as the HTTP referrer. Use the **bare
+  domain** without `https://` (e.g. `coha.pacificloon.ca`) — this matches all
+  paths automatically. Including the `https://` prefix will only match the exact
+  root URL.
+- Enable at minimum the **Maps JavaScript API** for your project. Other APIs
+  (Distance Matrix, Geocoding, Geolocation, Maps Embed, Maps Static) may also be
+  needed depending on future features.
+
+### 8b. Create a Google Maps Map ID
+
+Required for `AdvancedMarkerElement` support on the `/map` endpoint.
+
+- In the Cloud Console: View All Products → Google Maps Platform → Map Management →
+  Create map ID.
+- Set type to **JavaScript**, style to **Vector**. Leave Tilt and Rotation unticked.
+- Note the Map ID value for the next step.
+
+### 9. Set environment variables
+
+```bash
+gcloud run services update coha-gcloud \
+  --region YOUR_REGION \
+  --set-env-vars COHA_MAPS_API_KEY=YOUR_MAPS_API_KEY,\
+COHA_GOOGLE_MAP_ID=YOUR_MAP_ID,\
+COHA_GCP_PROJECT_ID=YOUR_PROJECT_ID
+```
+
+Set the admin password **separately** using single quotes, which prevent the shell
+from misinterpreting special characters:
+```bash
+gcloud run services update coha-gcloud \
+  --region YOUR_REGION \
+  --set-env-vars 'COHA_ADMIN_PASSWORD=YOUR_ADMIN_PASSWORD'
+```
+
+If you used a bucket name other than `coha-data`:
+```bash
+gcloud run services update coha-gcloud \
+  --region YOUR_REGION \
+  --set-env-vars COHA_BUCKET_NAME=YOUR_BUCKET_NAME
+```
+
+Full list of environment variables:
+
+| Variable | Required | Description |
+|---|---|---|
+| `COHA_MAPS_API_KEY` | Yes | Google Maps JavaScript API key |
+| `COHA_GOOGLE_MAP_ID` | Yes | Google Maps Map ID (for AdvancedMarkerElement) |
+| `COHA_GCP_PROJECT_ID` | Yes | GCP project ID (e.g. `wildresearch-coha`) |
+| `COHA_ADMIN_PASSWORD` | Yes | Password for the `/admin/` endpoint (HTTP Basic Auth) |
+| `COHA_BUCKET_NAME` | No | GCS bucket name (default: `coha-data`) |
+
+### 10. Deploy the app with env vars active
+
+```bash
+gcloud run deploy coha-gcloud --source . --region YOUR_REGION
+```
+
+Confirm the environment variables appear in the latest revision in the Cloud Run
+console.
+
+### 11. Test the app
+
+- `/` — the survey form loads; the map shows station markers; GPS location works.
+  Fill in all fields and submit the form to save a test observation — do not call
+  `/save/` directly, as it requires a properly constructed form POST.
+- `/map/` — the map shows the test observation you just submitted.
+- `/data/` — download links are present and the CSV files open correctly.
+- `/admin/` — log in with the admin password, view the test observation, then
+  delete it to confirm the delete and summary update work correctly.
+
+---
+
+## Subsequent deployments
+
+```bash
+gcloud auth application-default login   # if credentials have expired
+gcloud run deploy coha-gcloud --source . --region YOUR_REGION
+```
+
+---
+
+## Setting up a test deployment
+
+To test changes without affecting production data:
+
+1. Create a separate bucket and seed it with production data:
+   ```bash
+   gsutil mb -p YOUR_PROJECT_ID -l YOUR_REGION gs://YOUR_TEST_BUCKET
+   gsutil iam ch allUsers:objectViewer gs://YOUR_TEST_BUCKET
+   gsutil -m cp "gs://YOUR_BUCKET_NAME/[A-X].*.csv" gs://YOUR_TEST_BUCKET/
+   gsutil -m cp "gs://YOUR_BUCKET_NAME/COHA-data-*.csv" gs://YOUR_TEST_BUCKET/
+   ```
+
+2. Deploy a separate service:
+   ```bash
+   gcloud run deploy coha-gcloud-test --source . --region YOUR_REGION
+   ```
+   Allow unauthenticated invocations when prompted.
+
+3. Grant public access (if the prompt was skipped):
+   ```bash
+   gcloud run services add-iam-policy-binding coha-gcloud-test \
+     --region YOUR_REGION --member="allUsers" --role="roles/run.invoker"
+   ```
+
+4. Set environment variables, pointing at the test bucket:
+   ```bash
+   gcloud run services update coha-gcloud-test \
+     --region YOUR_REGION \
+     --set-env-vars COHA_BUCKET_NAME=YOUR_TEST_BUCKET,\
+   COHA_GCP_PROJECT_ID=YOUR_PROJECT_ID,\
+   COHA_MAPS_API_KEY=YOUR_MAPS_API_KEY,\
+   COHA_GOOGLE_MAP_ID=YOUR_MAP_ID
+   gcloud run services update coha-gcloud-test \
+     --region YOUR_REGION \
+     --set-env-vars 'COHA_ADMIN_PASSWORD=YOUR_TEST_PASSWORD'
+   ```
+
+5. Add the test service URL to the Maps API key's allowed referrers in the
+   Google Cloud Console. Use the bare domain without `https://`.
+
+6. When done, tear down the test service:
+   ```bash
+   gcloud run services delete coha-gcloud-test --region YOUR_REGION
+   ```
+
+---
+
+## Admin interface
+
+The `/admin/` endpoint is protected by HTTP Basic Auth. Any username is accepted;
+only the password (set via `COHA_ADMIN_PASSWORD`) is checked. Use any browser —
+it will prompt for credentials automatically.
+
+To change the admin password:
+```bash
+gcloud run services update coha-gcloud \
+  --region YOUR_REGION \
+  --set-env-vars 'COHA_ADMIN_PASSWORD=YOUR_NEW_PASSWORD'
+```
+
+Always use single quotes around the password value to prevent the shell from
+misinterpreting special characters.
