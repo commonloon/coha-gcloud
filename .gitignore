@@ -1,3 +1,4 @@
+.env.local
 inspectionProfiles
 .idea
 coha-gcloud.iml

@@ -66,15 +66,13 @@ the coha.pacificloon.ca website is intended to replace.
 7. Select appropriate values for cloud cover, wind speed and noise at this station 
 8. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
    1. Remember: stop playing audio at a station and record your detection as soon as you see or hear a COHA.  We don't want to drive them off their nest.
-   2. Push the button to start the two minute timer 
+   2. Push the button to start the seven minute audio file 
+      - This file contains all the audio for the survey protocol: two minutes of silence, then three repetitions of (20 seconds of COHA call followed by 40s of silence), then two minutes of silence, then two tones to indicate the end of the recording.
    3. Look and listen for signs of COHA
-   4. after two minutes if no COHA has been detected, use the audio playback control to play the COHA call for 20 seconds
-   5. When the call playback finishes, start the 40s timer and look and listen for signs of COHA
-   6. repeat the preceding steps three times (i.e. 3 cycles of play call for 20s / observe for 40s)
-   7. After the 3rd playback/observe cycle, start the 2 minute timer and observe for two more minutes
-   8. record whether you observed a COHA, adding details if yes.
-   9. optionally add notes in the Notes field
-   10. press the "**Save Observation**" button to save your results.  
+   4. Stop the playback immediately if you hear or see a COHA, otherwise continue looking and listening for COHA until you hear the tones that indicate the end of the recording.
+   5. record whether you observed a COHA, adding details if yes.
+   6. optionally add notes in the Notes field 
+   7. press the "**Save Observation**" button to save your results.  
        - **Your observation will be lost if you don't do this step**
 9. Go to the next station and repeat steps 5-8 until you have surveyed the entire quadrat
    - **NOTE: the location is set when you select the station**, so select the station after you have arrived in the location where you plan to observe.

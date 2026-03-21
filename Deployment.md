@@ -151,9 +151,27 @@ console.
 
 ## Subsequent deployments
 
+Use `deploy.sh` rather than invoking `gcloud run deploy` directly.  The script
+reads secret values from a local `.env.local` file (gitignored) and passes them
+to Cloud Run on every deploy via `--update-env-vars`, so they are never silently
+dropped by a redeployment.
+
+Create `.env.local` in the project root (if it does not already exist) with the
+following variables:
+
+```
+COHA_MAPS_API_KEY=...
+COHA_GOOGLE_MAP_ID=...
+COHA_GCP_PROJECT_ID=...
+COHA_ADMIN_PASSWORD=...
+```
+
+Then deploy:
+
 ```bash
 gcloud auth application-default login   # if credentials have expired
-gcloud run deploy coha-gcloud --source . --region YOUR_REGION
+./deploy.sh          # production
+./deploy.sh test     # test service
 ```
 
 ---
