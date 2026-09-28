@@ -30,18 +30,14 @@ the coha.pacificloon.ca website is intended to replace.
    * make sure your phone is paired and the volume set to max.
 7. Select appropriate values for cloud cover, wind speed and noise at this station 
 8. When you are ready, begin the [survey protocol](http://wildresearch.ca/wp-content/uploads/2017/03/Coopers-Hawk-in-the-City-Survey-Protocol.pdf)
-   1. the "Start Survey" button automates the audio part of the survey protocol
-      1. pushing the button starts a two minute timer.  
-         1. Use this time to look for hawks in the area
-         2. if you see a COHA, press the button again to stop the audio playback
-      2. after two minutes, the web app will play a recorded COHA call for 20 seconds, then pause for 40 seconds
-         - if you see or hear a COHA, press "Stop Survey" to stop the audio playback
-      3. the app repeats the call playback/pause three times
-      4. the final timer counts down an additional two minutes, during which time you should continue to look and listen for COHAs
-   2. When you have finished your observation at this station (at the end of the protocol or immediately on detecting a COHA), use the "Was COHA detected" dropdown to record whether you observed a COHA.
-      - if a COHA was detected, use the next several fields to record details such as direction and distance
-   3. Optionally add notes to the notes field
-   4. Press the "Save Observation" button to save your observation.
+   1. Remember: stop playing audio at a station and record your detection as soon as you see or hear a COHA.  We don't want to drive them off their nest.
+   2. Push the button to start the seven minute audio file
+      - This file contains all the audio for the survey protocol: two minutes of silence, then three repetitions of (20 seconds of COHA call followed by 40s of silence), then two minutes of silence, then two tones to indicate the end of the recording.
+   3. Look and listen for signs of COHA
+   4. Stop the playback immediately if you hear or see a COHA, otherwise continue looking and listening for COHA until you hear the tones that indicate the end of the recording.
+   5. Record whether you observed a COHA, adding details if yes.
+   6. Optionally add notes to the notes field
+   7. Press the "Save Observation" button to save your observation.
       - **NOTE: your data will be lost if you don't press "Save Observation"!**
 9. Go to the next station and repeat steps 5-8 until you have surveyed the entire quadrat
    - **NOTE: the location is set when you select the station**, so select the station after you have arrived in the location where you plan to observe.

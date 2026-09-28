@@ -130,6 +130,16 @@ textarea {
   justify-content: center;
 }
 
+#legacy {
+  display: grid;
+  color: #E3B448;
+  border-radius: 20px;
+  align-items: center;
+  justify-items: center;
+  justify-content: center;
+  margin-top: 10px;
+}
+
 #timer {
   background-color: #281f18;
   margin-top: 0.5em;

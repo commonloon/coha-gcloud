@@ -337,7 +337,7 @@ def collect_data():
     iphone = is_iphone()
     return render_template('coha-ui.html',
                            observers=observers, quadrat=quadrat,
-                           message="Select Station and conditions before starting the survey.",
+                           message="Select Station and conditions, then press play to start the survey.",
                            iphone=iphone,
                            quadrats=quadrats, stations=stations,
                            coords=load_station_coords(),

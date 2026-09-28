@@ -166,6 +166,18 @@
     </form>
     <div id="footer">
         <p id="message">{{ message }}</p>
+        <audio
+            id="player-full"
+            controls
+            src="/COHA.full.mp3">
+                <a href="/COHA.full.mp3">
+                    Download audio
+                </a>
+        </audio>
+        <button name="updateLocation" id="updateLocation" type="button" onclick="updateLocation()" >Update Location</button>
+    </div>
+    <div id="map"></div>
+    <div id="legacy">
         {% if iphone %}
             <button name="twoMinuteTimer" id="twoMinuteTimer" type="button" onclick="twoMinuteTimer()">2 minute timer</button>
             <button name="fortySecondTimer" id="fortySecondTimer" type="button" onclick="fortySecondTimer()">40 second timer</button>
@@ -175,14 +187,6 @@
         {% endif %}
         <p id="timer">00:00</p>
         <audio
-            id="player-full"
-            controls
-            src="/COHA.full.mp3">
-                <a href="/COHA.full.mp3">
-                    Download audio
-                </a>
-        </audio>
-        <audio
             id="player"
             controls
             src="/COHA.modified.mp3">
@@ -190,9 +194,7 @@
                     Download audio
                 </a>
         </audio>
-        <button name="updateLocation" id="updateLocation" type="button" onclick="updateLocation()" >Update Location</button>
     </div>
-    <div id="map"></div>
 
 <script
         src="https://maps.googleapis.com/maps/api/js?key={{ maps_api_key }}&callback=initMap&loading=async"
